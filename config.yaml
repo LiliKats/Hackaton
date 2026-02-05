@@ -1,0 +1,24 @@
+# Configure callbacks the proper way for LiteLLM proxy
+litellm_settings:
+  callbacks: ["custom_callbacks.proxy_handler_instance"]
+
+general_settings:
+  pass_through_endpoints:
+    - path: "/claude-sonnet-4_20250514"                      # your local prefix
+      target: "https://aoai-farm.bosch-temp.com/api/google/v1/publishers/anthropic/models/claude-sonnet-4@20250514:rawPredict"     # 
+      forward_headers: false               # we control headers explicitly
+      append_path: false         # Whether the requested path after path should be appended to the target. Useful if upstream expects exact paths.
+      headers:
+        Authorization: "Bearer os.environ/LLM_FARM_API_KEY"
+        content-type: application/json
+        accept: application/json
+        anthropic_version: vertex-2023-10-16
+    - path: "/claude-sonnet-4_20250514/v1/messages"                      # your local prefix
+      target: "https://aoai-farm.bosch-temp.com/api/google/v1/publishers/anthropic/models/claude-sonnet-4@20250514:rawPredict"     # 
+      forward_headers: false               # we control headers explicitly
+      append_path: false         # Whether the requested path after path should be appended to the target. Useful if upstream expects exact paths.
+      headers:
+        Authorization: "Bearer os.environ/LLM_FARM_API_KEY"
+        content-type: application/json
+        accept: application/json
+        anthropic_version: vertex-2023-10-16
