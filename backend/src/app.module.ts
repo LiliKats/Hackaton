@@ -8,22 +8,20 @@ import { UsersModule } from './modules/users/users.module';
 import { LeaveRequestsModule } from './modules/leave-requests/leave-requests.module';
 import { TeamsModule } from './modules/teams/teams.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { WorkflowsModule } from './modules/workflows/workflows.module';
+import { SimpleWorkflowsController } from './modules/workflows/simple-workflows.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../.env',
+      envFilePath: '.env',
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DATABASE_HOST'),
-        port: +configService.get<number>('DATABASE_PORT', 5432),
-        username: configService.get('DATABASE_USER'),
-        password: configService.get('DATABASE_PASSWORD'),
-        database: configService.get('DATABASE_NAME'),
+        type: 'sqlite',
+        database: './database.sqlite',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: process.env.NODE_ENV === 'development',
         logging: process.env.NODE_ENV === 'development',
@@ -35,8 +33,9 @@ import { CalendarModule } from './modules/calendar/calendar.module';
     LeaveRequestsModule,
     TeamsModule,
     CalendarModule,
+    WorkflowsModule, // Re-enabled after fixing compilation issues
   ],
-  controllers: [AppController],
+  controllers: [AppController, SimpleWorkflowsController],
   providers: [AppService],
 })
 export class AppModule {}

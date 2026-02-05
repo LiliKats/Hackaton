@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LeaveType, LeaveStatus } from '@/types';
+import api from '@/services/api';
 
 interface Employee {
   id: string;
@@ -11,35 +12,56 @@ interface Employee {
 
 interface LeaveEntry {
   employeeId: string;
+  employeeName: string;
+  employeeEmail: string;
   date: string;
-  type: LeaveType;
-  status: LeaveStatus;
+  leaveType: string;
+  status: string;
+  reason: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  submittedAt?: string;
 }
 
 const Calendar: React.FC = () => {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample team data - replace with real API data
+  // Team members - we'll derive this from leave data
   const teamMembers: Employee[] = [
     { id: 'current-user', name: `${user?.firstName || 'You'} ${user?.lastName || '(Manager)'}`, role: 'Manager' },
-    { id: '1', name: 'John Doe', role: 'Software Engineer' },
-    { id: '2', name: 'Jane Smith', role: 'Product Manager' },
-    { id: '3', name: 'Mike Johnson', role: 'Designer' },
-    { id: '4', name: 'Sarah Wilson', role: 'QA Engineer' },
-    { id: '5', name: 'David Brown', role: 'DevOps Engineer' },
+    { id: 'john-doe', name: 'John Doe', role: 'Software Engineer' },
+    { id: 'jane-smith', name: 'Jane Smith', role: 'Product Manager' },
+    { id: 'mike-johnson', name: 'Mike Johnson', role: 'Designer' },
+    { id: 'sarah-wilson', name: 'Sarah Wilson', role: 'QA Engineer' },
+    { id: 'alex-chen', name: 'Alex Chen', role: 'DevOps Engineer' },
+    { id: 'emily-rodriguez', name: 'Emily Rodriguez', role: 'Frontend Developer' },
   ];
 
-  // Sample leave data - replace with real API data
-  const leaveEntries: LeaveEntry[] = [
-    { employeeId: '1', date: '2024-02-15', type: LeaveType.ANNUAL, status: LeaveStatus.APPROVED },
-    { employeeId: '1', date: '2024-02-16', type: LeaveType.ANNUAL, status: LeaveStatus.APPROVED },
-    { employeeId: '2', date: '2024-02-10', type: LeaveType.SICK, status: LeaveStatus.APPROVED },
-    { employeeId: '3', date: '2024-02-22', type: LeaveType.PERSONAL, status: LeaveStatus.PENDING },
-    { employeeId: '4', date: '2024-02-28', type: LeaveType.ANNUAL, status: LeaveStatus.APPROVED },
-    { employeeId: '5', date: '2024-02-14', type: LeaveType.ANNUAL, status: LeaveStatus.APPROVED },
-    { employeeId: 'current-user', date: '2024-02-20', type: LeaveType.ANNUAL, status: LeaveStatus.PENDING },
-  ];
+  // Fetch leave data from backend API
+  useEffect(() => {
+    const fetchLeaveData = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get<LeaveEntry[]>('/leave-requests/all');
+        setLeaveEntries(response.data);
+        console.log('📅 Loaded leave data for calendar:', response.data.length, 'entries');
+      } catch (error) {
+        console.error('Error fetching leave data for calendar:', error);
+        setLeaveEntries([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaveData();
+
+    // Refresh every 30 seconds to show new approvals
+    const interval = setInterval(fetchLeaveData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -56,33 +78,33 @@ const Calendar: React.FC = () => {
     return leaveEntries.find(entry => entry.employeeId === employeeId && entry.date === date);
   };
 
-  const getLeaveTypeColor = (type: LeaveType, status: LeaveStatus) => {
-    const baseColors = {
-      [LeaveType.ANNUAL]: 'bg-blue-100 text-blue-800 border-blue-200',
-      [LeaveType.SICK]: 'bg-red-100 text-red-800 border-red-200',
-      [LeaveType.PERSONAL]: 'bg-purple-100 text-purple-800 border-purple-200',
-      [LeaveType.UNPAID]: 'bg-gray-100 text-gray-800 border-gray-200',
-      [LeaveType.MATERNITY]: 'bg-pink-100 text-pink-800 border-pink-200',
-      [LeaveType.PATERNITY]: 'bg-green-100 text-green-800 border-green-200',
-      [LeaveType.OTHER]: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  const getLeaveTypeColor = (type: string, status: string) => {
+    const baseColors: Record<string, string> = {
+      'ANNUAL': 'bg-blue-100 text-blue-800 border-blue-200',
+      'SICK': 'bg-red-100 text-red-800 border-red-200',
+      'PERSONAL': 'bg-purple-100 text-purple-800 border-purple-200',
+      'UNPAID': 'bg-gray-100 text-gray-800 border-gray-200',
+      'MATERNITY': 'bg-pink-100 text-pink-800 border-pink-200',
+      'PATERNITY': 'bg-green-100 text-green-800 border-green-200',
+      'OTHER': 'bg-yellow-100 text-yellow-800 border-yellow-200',
     };
 
-    if (status === LeaveStatus.PENDING) {
+    if (status === 'PENDING') {
       return 'bg-orange-100 text-orange-800 border-orange-200 border-dashed';
     }
 
-    return baseColors[type] || baseColors[LeaveType.OTHER];
+    return baseColors[type] || baseColors['OTHER'];
   };
 
-  const getLeaveTypeAbbr = (type: LeaveType) => {
-    const abbr = {
-      [LeaveType.ANNUAL]: 'V',
-      [LeaveType.SICK]: 'S',
-      [LeaveType.PERSONAL]: 'P',
-      [LeaveType.UNPAID]: 'U',
-      [LeaveType.MATERNITY]: 'M',
-      [LeaveType.PATERNITY]: 'PT',
-      [LeaveType.OTHER]: 'O',
+  const getLeaveTypeAbbr = (type: string) => {
+    const abbr: Record<string, string> = {
+      'ANNUAL': 'V',
+      'SICK': 'S',
+      'PERSONAL': 'P',
+      'UNPAID': 'U',
+      'MATERNITY': 'M',
+      'PATERNITY': 'PT',
+      'OTHER': 'O',
     };
     return abbr[type] || 'O';
   };
@@ -122,7 +144,10 @@ const Calendar: React.FC = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
-            <p className="text-gray-600">View team leave schedule and plan your time off</p>
+            <p className="text-gray-600">
+              View team leave schedule and plan your time off
+              {loading && <span className="ml-2 text-indigo-600">Loading...</span>}
+            </p>
           </div>
 
           {/* Month Navigation */}
@@ -228,12 +253,12 @@ const Calendar: React.FC = () => {
                         {leave ? (
                           <div
                             className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getLeaveTypeColor(
-                              leave.type,
+                              leave.leaveType,
                               leave.status
                             )}`}
-                            title={`${leave.type} - ${leave.status}`}
+                            title={`${leave.leaveType} - ${leave.status}\n${leave.reason}`}
                           >
-                            {getLeaveTypeAbbr(leave.type)}
+                            {getLeaveTypeAbbr(leave.leaveType)}
                           </div>
                         ) : (
                           <span className="text-gray-300">-</span>

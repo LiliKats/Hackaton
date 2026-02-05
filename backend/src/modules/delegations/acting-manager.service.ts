@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
+import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual, In, Not, IsNull } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { ApprovalStep, ApprovalStepStatus } from '../workflows/entities/approval-step.entity';
 import { ApprovalHistory, AuditAction } from '../audit/entities/approval-history.entity';
@@ -9,8 +9,8 @@ import { Team } from '../teams/entities/team.entity';
 export interface ActingManagerAssignment {
   managerId: string;
   actingManagerId: string;
-  effectiveFrom: Date;
-  effectiveTo: Date;
+  effectiveFrom: Date | null;
+  effectiveTo: Date | null;
   reason: string;
   scope: 'full' | 'approval_only' | 'specific_users' | 'specific_teams';
   scopeDetails?: {
@@ -135,12 +135,22 @@ export class ActingManagerService {
     }
 
     await this.userRepository.manager.transaction(async (entityManager) => {
+      // Store the acting manager info before clearing
+      const actingManagerInfo = {
+        actingManagerId: manager.actingManager?.id || '',
+        effectiveFrom: manager.actingManagerFrom || new Date(),
+        effectiveTo: manager.actingManagerTo || new Date(),
+      };
+
       // Restore original responsibilities
-      const restoreResult = await this.restoreManagerResponsibilities(
-        entityManager,
-        manager,
-        manager.actingManager,
-      );
+      let restoreResult = { transferredApprovals: 0, transferredSubordinates: 0, notificationsCreated: 0, errors: [] as string[] };
+      if (manager.actingManager) {
+        restoreResult = await this.restoreManagerResponsibilities(
+          entityManager,
+          manager,
+          manager.actingManager,
+        );
+      }
 
       // Clear acting manager assignment
       manager.actingManager = null;
@@ -154,9 +164,9 @@ export class ActingManagerService {
         entityManager,
         {
           managerId,
-          actingManagerId: manager.actingManager?.id || '',
-          effectiveFrom: manager.actingManagerFrom || new Date(),
-          effectiveTo: manager.actingManagerTo || new Date(),
+          actingManagerId: actingManagerInfo.actingManagerId,
+          effectiveFrom: actingManagerInfo.effectiveFrom,
+          effectiveTo: actingManagerInfo.effectiveTo,
           reason,
           scope: 'full',
         },
@@ -325,11 +335,11 @@ export class ActingManagerService {
     }
 
     // Validate date range
-    if (assignment.effectiveFrom >= assignment.effectiveTo) {
+    if (assignment.effectiveFrom && assignment.effectiveTo && assignment.effectiveFrom >= assignment.effectiveTo) {
       errors.push('Effective from date must be before effective to date');
     }
 
-    if (assignment.effectiveFrom < new Date()) {
+    if (assignment.effectiveFrom && assignment.effectiveFrom < new Date()) {
       warnings.push('Acting manager assignment effective from date is in the past');
     }
 
@@ -387,7 +397,7 @@ export class ActingManagerService {
     const expiredAssignments = await this.userRepository.find({
       where: {
         actingManagerTo: LessThanOrEqual(now),
-        actingManager: { id: Not(null) },
+        actingManager: Not(IsNull()),
       },
       relations: ['actingManager'],
     });
@@ -416,6 +426,10 @@ export class ActingManagerService {
     assignment: ActingManagerAssignment,
   ): Promise<ActingManagerAssignment[]> {
     // For simplicity, we'll check if the acting manager is already assigned to someone else in the same period
+    if (!assignment.effectiveFrom || !assignment.effectiveTo) {
+      return [];
+    }
+
     const conflicting = await this.userRepository.find({
       where: {
         actingManager: { id: assignment.actingManagerId },
@@ -448,7 +462,8 @@ export class ActingManagerService {
       });
 
       if (conflictingUser) {
-        if (conflictingUser.actingManagerFrom < assignment.effectiveFrom) {
+        if (conflictingUser.actingManagerFrom && assignment.effectiveFrom &&
+            conflictingUser.actingManagerFrom < assignment.effectiveFrom) {
           // Shorten the existing assignment
           conflictingUser.actingManagerTo = assignment.effectiveFrom;
           await manager.save(User, conflictingUser);
@@ -500,10 +515,7 @@ export class ActingManagerService {
             entityType: approval.workflowInstance?.entityType || 'approval',
             entityId: approval.workflowInstance?.entityId || approval.id,
             metadata: {
-              actingManagerAssignment: true,
-              originalManagerId: originalManager.id,
-              actingManagerId: actingManager.id,
-              transferReason: assignment.reason,
+              originalAssigneeId: originalManager.id,
             },
           });
 
@@ -565,9 +577,7 @@ export class ActingManagerService {
             entityType: approval.workflowInstance?.entityType || 'approval',
             entityId: approval.workflowInstance?.entityId || approval.id,
             metadata: {
-              actingManagerRestoration: true,
-              originalManagerId: originalManager.id,
-              actingManagerId: actingManager.id,
+              originalAssigneeId: originalManager.id,
             },
           });
 
@@ -636,14 +646,7 @@ export class ActingManagerService {
       entityType: 'acting_manager_assignment',
       entityId: assignment.managerId,
       metadata: {
-        actingManagerAction: action,
-        assignmentScope: assignment.scope,
-        effectiveFrom: assignment.effectiveFrom,
-        effectiveTo: assignment.effectiveTo,
-        reason: assignment.reason,
-        transferredApprovals: transferResult.transferredApprovals,
-        transferredSubordinates: transferResult.transferredSubordinates,
-        errors: transferResult.errors,
+        systemTriggered: true,
       },
     });
 
@@ -652,4 +655,3 @@ export class ActingManagerService {
 }
 
 // Import for TypeORM operations
-import { Not } from 'typeorm';

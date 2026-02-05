@@ -130,7 +130,7 @@ describe('DelegationService', () => {
       });
 
       // Mock transaction
-      jest.spyOn(delegationRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(delegationRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           save: jest.fn().mockResolvedValue(mockDelegation),
         });
@@ -188,10 +188,10 @@ describe('DelegationService', () => {
         transferredApprovalIds: ['step-1', 'step-2'],
       };
 
-      jest.spyOn(delegationRepo, 'findOne').mockResolvedValue(activeDelegation as ManagerDelegation);
+      jest.spyOn(delegationRepo, 'findOne').mockResolvedValue(activeDelegation as unknown as ManagerDelegation);
       jest.spyOn(service as any, 'validateRevocationPermissions').mockResolvedValue(undefined);
 
-      jest.spyOn(delegationRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(delegationRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           save: jest.fn().mockResolvedValue({
             ...activeDelegation,
@@ -263,7 +263,7 @@ describe('DelegationService', () => {
     it('should return delegate if active delegation exists', async () => {
       const originalApproverId = 'user-1';
 
-      jest.spyOn(userRepo, 'findOne').mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepo, 'findOne').mockResolvedValue(mockUser as unknown as User);
       jest.spyOn(service as any, 'getActiveDelegationsFrom').mockResolvedValue([
         { ...mockDelegation, delegatedTo: mockDelegate }
       ]);
@@ -271,19 +271,19 @@ describe('DelegationService', () => {
       const result = await service.getEffectiveApprover(originalApproverId);
 
       expect(result).toBeDefined();
-      expect(result.id).toBe('delegate-1');
+      expect(result!.id).toBe('delegate-1');
     });
 
     it('should return original user if no active delegations', async () => {
       const originalApproverId = 'user-1';
 
-      jest.spyOn(userRepo, 'findOne').mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepo, 'findOne').mockResolvedValue(mockUser as unknown as User);
       jest.spyOn(service as any, 'getActiveDelegationsFrom').mockResolvedValue([]);
 
       const result = await service.getEffectiveApprover(originalApproverId);
 
       expect(result).toBeDefined();
-      expect(result.id).toBe('user-1');
+      expect(result!.id).toBe('user-1');
     });
 
     it('should return null if user not found', async () => {
@@ -373,7 +373,7 @@ describe('DelegationService', () => {
 
       jest.spyOn(delegationRepo, 'find').mockResolvedValue(expiredDelegations as ManagerDelegation[]);
 
-      jest.spyOn(delegationRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(delegationRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           save: jest.fn().mockResolvedValue({
             ...expiredDelegations[0],

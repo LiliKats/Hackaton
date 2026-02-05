@@ -84,13 +84,13 @@ export class User {
 
   // Acting manager assignment
   @ManyToOne(() => User, { nullable: true })
-  actingManager: User;
+  actingManager: User | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  actingManagerFrom: Date;
+  actingManagerFrom: Date | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  actingManagerTo: Date;
+  actingManagerTo: Date | null;
 
   @ManyToOne(() => Team, (team) => team.members, { nullable: true })
   team: Team;
@@ -125,13 +125,13 @@ export class User {
   }
 
   hasActingManager(): boolean {
-    if (!this.actingManager) return false;
+    if (!this.actingManager || !this.actingManagerFrom || !this.actingManagerTo) return false;
     const now = new Date();
     return this.actingManagerFrom <= now && this.actingManagerTo >= now;
   }
 
-  getEffectiveManager(): User {
-    if (this.hasActingManager()) {
+  getEffectiveManager(): User | null {
+    if (this.hasActingManager() && this.actingManager) {
       return this.actingManager;
     }
     return this.manager;

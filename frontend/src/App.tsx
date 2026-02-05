@@ -7,6 +7,7 @@ import LeaveRequests from '@/pages/LeaveRequests';
 import Calendar from '@/pages/Calendar';
 import Teams from '@/pages/Teams';
 import Profile from '@/pages/Profile';
+import Approvals from '@/pages/Approvals';
 import PrivateRoute from '@/components/PrivateRoute';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
             <Route path="/leave-requests" element={<LeaveRequests />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/teams" element={<Teams />} />
+            <Route path="/approvals" element={<Approvals />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
         </Routes>

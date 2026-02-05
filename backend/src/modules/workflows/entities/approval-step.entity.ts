@@ -98,7 +98,7 @@ export class ApprovalStep {
 
   // Decision tracking
   @Column({ type: 'text', nullable: true })
-  comments: string;
+  comments: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
   decidedAt: Date;
@@ -116,10 +116,10 @@ export class ApprovalStep {
   originalAssignee: User;
 
   @Column({ name: 'original_assignee_id', nullable: true })
-  originalAssigneeId: string;
+  originalAssigneeId: string | null;
 
   @Column({ name: 'delegation_id', nullable: true })
-  delegationId: string;
+  delegationId: string | null;
 
   // Auto-approval tracking
   @Column({ default: false })

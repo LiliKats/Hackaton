@@ -559,7 +559,6 @@ export class DelegationService {
           metadata: {
             delegationId,
             originalAssigneeId: fromUserId,
-            transferReason: 'delegation_created',
           },
         });
 
@@ -614,7 +613,6 @@ export class DelegationService {
           entityId: step.workflowInstance.entityId,
           metadata: {
             delegationId,
-            transferBackReason: 'delegation_ended',
           },
         });
 
@@ -697,10 +695,7 @@ export class DelegationService {
       entityType: 'manager_delegation',
       entityId: delegation.id,
       metadata: {
-        delegationType: delegation.delegationType,
-        effectiveFrom: delegation.effectiveFrom,
-        effectiveTo: delegation.effectiveTo,
-        reason: delegation.reason,
+        delegationId: delegation.id,
       },
       ...additionalData,
     });

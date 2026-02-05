@@ -61,7 +61,7 @@ export class LeaveRequest {
   approvedAt: Date;
 
   @Column({ type: 'text', nullable: true })
-  rejectionReason: string;
+  rejectionReason: string | null;
 
   // Workflow integration
   @OneToOne(() => WorkflowInstance, { nullable: true, cascade: true })
