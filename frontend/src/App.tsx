@@ -15,8 +15,8 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/leave-requests" element={<LeaveRequests />} />
             <Route path="/calendar" element={<Calendar />} />
