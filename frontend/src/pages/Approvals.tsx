@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ApprovalRequestCard from '@/components/ApprovalRequestCard';
-import { LeaveType, UserRole } from '@/types';
+import { UserRole } from '@/types';
 import { approvalsService, type PendingApproval } from '@/services/approvals.service';
 
 // Using PendingApproval interface from approvals.service.ts
@@ -14,6 +14,7 @@ const Approvals: React.FC = () => {
   const [sortBy, setSortBy] = useState<'date' | 'priority' | 'type'>('date');
 
   // Sample data - current month February 2026 (not used since we're using real backend API)
+  /*
   const samplePendingApprovals: PendingApproval[] = [
     {
       stepId: 'step-001',
@@ -72,6 +73,7 @@ const Approvals: React.FC = () => {
       currentStep: 'Manager Approval',
     },
   ];
+  */
 
   useEffect(() => {
     // Fetch pending approvals from API

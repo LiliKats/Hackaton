@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ApprovalStep } from './entities/approval-step.entity';
-import { WorkflowInstance } from './entities/workflow-instance.entity';
+import { ApprovalStep, ApprovalStepStatus } from './entities/approval-step.entity';
+import { WorkflowInstance, WorkflowStatus } from './entities/workflow-instance.entity';
 import { LeaveRequest } from '../leave-requests/entities/leave-request.entity';
 import { User } from '../users/entities/user.entity';
 
@@ -76,9 +76,10 @@ export class WorkflowApprovalsService {
             reason: leaveRequest.reason || '',
             submittedAt: leaveRequest.createdAt.toISOString(),
             priority: (workflowInstance.context?.priority as any) || 'medium',
-            currentStep: (step.metadata?.stepName as string) || 'Manager Approval',
+            currentStep: step.stepName || 'Manager Approval',
             metadata: {
-              ...step.metadata,
+              stepOrder: step.stepOrder,
+              stepType: step.stepType,
               ...workflowInstance.context,
             },
           };
@@ -111,7 +112,7 @@ export class WorkflowApprovalsService {
   ): Promise<{ success: boolean; workflowInstance?: WorkflowInstance }> {
     // Get the approval step
     const step = await this.approvalStepRepository.findOne({
-      where: { id: stepId, assigneeId: userId, status: 'pending' },
+      where: { id: stepId, assignedUserId: userId, status: ApprovalStepStatus.PENDING },
     });
 
     if (!step) {
@@ -119,16 +120,20 @@ export class WorkflowApprovalsService {
     }
 
     // Update the step
-    step.status = 'completed';
-    step.completedAt = new Date();
+    step.status = decision === 'approve' ? ApprovalStepStatus.APPROVED : ApprovalStepStatus.REJECTED;
+    step.decidedAt = new Date();
     step.comments = comments;
-    step.metadata = {
-      ...step.metadata,
-      decision,
-      processedBy: userId,
-      processedAt: new Date().toISOString(),
-      ...metadata,
-    };
+    step.decidedById = userId;
+    // Store additional metadata in conditionalData if needed
+    if (metadata) {
+      step.conditionalData = {
+        ...step.conditionalData,
+        decision,
+        processedBy: userId,
+        processedAt: new Date().toISOString(),
+        ...metadata,
+      };
+    }
 
     await this.approvalStepRepository.save(step);
 
@@ -150,20 +155,26 @@ export class WorkflowApprovalsService {
       if (leaveRequest) {
         if (decision === 'approve') {
           leaveRequest.status = 'approved' as any;
-          leaveRequest.approvedBy = await this.userRepository.findOne({ where: { id: userId } });
+          const approver = await this.userRepository.findOne({ where: { id: userId } });
+          if (approver) {
+            leaveRequest.approvedBy = approver;
+          }
           leaveRequest.approvedAt = new Date();
         } else {
           leaveRequest.status = 'rejected' as any;
           leaveRequest.rejectionReason = comments;
         }
 
-        leaveRequest.managerNotes = comments;
+        // Store comments in rejection reason or could add managerNotes field to entity later
+        if (decision !== 'approve') {
+          leaveRequest.rejectionReason = comments;
+        }
         await this.leaveRequestRepository.save(leaveRequest);
       }
     }
 
     // Complete the workflow
-    workflowInstance.status = 'completed';
+    workflowInstance.status = WorkflowStatus.COMPLETED;
     workflowInstance.completedAt = new Date();
     workflowInstance.context = {
       ...workflowInstance.context,

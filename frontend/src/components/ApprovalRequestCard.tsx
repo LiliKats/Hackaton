@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LeaveType, LeaveStatus } from '@/types';
+import { LeaveType } from '@/types';
 
 interface ApprovalRequest {
   stepId: string;

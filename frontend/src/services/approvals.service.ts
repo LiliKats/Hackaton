@@ -1,11 +1,12 @@
 import api from './api';
+import { LeaveType } from '@/types';
 
 export interface PendingApproval {
   stepId: string;
   workflowInstanceId: string;
   requestorName: string;
   requestorEmail: string;
-  leaveType: string;
+  leaveType: LeaveType;
   startDate: string;
   endDate: string;
   totalDays: number;

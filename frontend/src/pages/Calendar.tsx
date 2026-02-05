@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { LeaveType, LeaveStatus } from '@/types';
+// import { LeaveType } from '@/types';
 import api from '@/services/api';
 
 interface Employee {

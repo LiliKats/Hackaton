@@ -28,6 +28,7 @@ import { ManagerAnalyticsService } from '../analytics/manager-analytics.service'
 import { AuditTrailService } from '../audit/audit-trail.service';
 import { WorkflowApprovalsService } from './workflow-approvals.service';
 
+// DTO definitions
 class ProcessApprovalDto {
   decision: 'approve' | 'reject';
   comments?: string;
@@ -183,7 +184,7 @@ export class WorkflowsController {
       stepId,
       currentUser.id,
       approvalDto.decision,
-      approvalDto.comments,
+      approvalDto.comments || '',
       approvalDto.metadata,
     );
   }

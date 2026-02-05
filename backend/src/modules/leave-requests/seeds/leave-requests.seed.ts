@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { LeaveRequest, LeaveType, LeaveStatus } from '../entities/leave-request.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { WorkflowInstance, WorkflowStatus } from '../../workflows/entities/workflow-instance.entity';
-import { ApprovalStep } from '../../workflows/entities/approval-step.entity';
+import { ApprovalStep, ApprovalStepStatus, StepType } from '../../workflows/entities/approval-step.entity';
 
 @Injectable()
 export class LeaveRequestsSeedService implements OnApplicationBootstrap {
@@ -150,16 +150,14 @@ export class LeaveRequestsSeedService implements OnApplicationBootstrap {
 
       // Create approval step
       const approvalStep = this.approvalStepRepository.create({
-        id: `step-${i + 1}`,
         workflowInstanceId: savedWorkflow.id,
-        stepType: 'manager_approval',
-        assigneeId: managerUser.id, // All assigned to manager for demo
-        status: 'pending',
-        metadata: {
-          stepName: 'Manager Approval',
-          description: 'Manager review and approval',
-          priority: requestData.priority,
-        },
+        stepOrder: 1,
+        stepName: 'Manager Approval',
+        stepType: StepType.SINGLE_APPROVER,
+        assignedUserId: managerUser.id, // All assigned to manager for demo
+        status: ApprovalStepStatus.PENDING,
+        isRequired: true,
+        timeoutHours: 48,
       });
       await this.approvalStepRepository.save(approvalStep);
     }
@@ -230,7 +228,7 @@ export class LeaveRequestsSeedService implements OnApplicationBootstrap {
       },
     ];
 
-    const employees = [];
+    const employees: User[] = [];
     for (const empData of employeesData) {
       const employee = await this.createUserIfNotExists(empData);
       employees.push(employee);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface DateRangePickerProps {
   startDate: string;
@@ -19,7 +19,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   maxDate,
   className = ''
 }) => {
-  const [showCalendar, setShowCalendar] = useState(false);
+  // const [showCalendar, setShowCalendar] = useState(false);
 
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return 'Select date';
