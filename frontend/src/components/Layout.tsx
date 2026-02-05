@@ -50,6 +50,12 @@ const Layout = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Dev Admin Indicator */}
+              {user?.id === 'dev-admin-001' && (
+                <div className="flex items-center bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                  🔧 DEV ADMIN
+                </div>
+              )}
               <Link
                 to="/profile"
                 className="flex items-center text-sm text-gray-700 hover:text-gray-900"
