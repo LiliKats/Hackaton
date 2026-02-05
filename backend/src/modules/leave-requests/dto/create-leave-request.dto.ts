@@ -11,12 +11,12 @@ class IsDateAfterConstraint implements ValidatorConstraintInterface {
 
     if (!value || !relatedValue) return false;
 
-    return new Date(value) > new Date(relatedValue);
+    return new Date(value) >= new Date(relatedValue);
   }
 
   defaultMessage(args: ValidationArguments) {
     const [relatedPropertyName] = args.constraints;
-    return `End date must be after ${relatedPropertyName}`;
+    return `End date must be on or after ${relatedPropertyName}`;
   }
 }
 
