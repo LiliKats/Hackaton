@@ -75,16 +75,18 @@ export class LeaveRequestsService {
     queryBuilder.orderBy(`leaveRequest.${queryDto.sortBy}`, queryDto.sortOrder);
 
     // Apply pagination
-    const skip = (queryDto.page - 1) * queryDto.limit;
-    queryBuilder.skip(skip).take(queryDto.limit);
+    const page = queryDto.page ?? 1;
+    const limit = queryDto.limit ?? 20;
+    const skip = (page - 1) * limit;
+    queryBuilder.skip(skip).take(limit);
 
     const [data, total] = await queryBuilder.getManyAndCount();
-    const totalPages = Math.ceil(total / queryDto.limit);
+    const totalPages = Math.ceil(total / limit);
 
     return {
       data,
       total,
-      page: queryDto.page,
+      page,
       totalPages,
     };
   }
@@ -94,6 +96,28 @@ export class LeaveRequestsService {
       where: { user: { id: userId } },
       relations: ['user', 'approvedBy'],
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findByDateRange(startDate: Date, endDate: Date): Promise<LeaveRequest[]> {
+    return this.leaveRequestsRepository.find({
+      where: [
+        {
+          startDate: Between(startDate, endDate),
+          status: LeaveStatus.APPROVED,
+        },
+        {
+          endDate: Between(startDate, endDate),
+          status: LeaveStatus.APPROVED,
+        },
+        {
+          startDate: LessThanOrEqual(startDate),
+          endDate: MoreThanOrEqual(endDate),
+          status: LeaveStatus.APPROVED,
+        },
+      ],
+      relations: ['user'],
+      order: { startDate: 'ASC' },
     });
   }
 

@@ -406,7 +406,7 @@ export class LeaveRequestsController {
     @Body() bulkApprovalDto: BulkApprovalDto,
     @Request() req: RequestWithUser
   ) {
-    const results = { approved: [], failed: [] };
+    const results: { approved: string[], failed: { requestId: string, error: string }[] } = { approved: [], failed: [] };
 
     for (const requestId of bulkApprovalDto.requestIds) {
       try {
