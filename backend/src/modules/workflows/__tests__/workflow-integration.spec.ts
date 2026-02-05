@@ -8,7 +8,7 @@ import { DelegationService } from '../../delegations/delegation.service';
 import { WorkflowInstance } from '../entities/workflow-instance.entity';
 import { ApprovalStep } from '../entities/approval-step.entity';
 import { WorkflowTemplate } from '../entities/workflow-template.entity';
-import { ManagerDelegation } from '../../delegations/entities/manager-delegation.entity';
+import { ManagerDelegation, DelegationType } from '../../delegations/entities/manager-delegation.entity';
 import { ApprovalHistory } from '../../audit/entities/approval-history.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { LeaveRequest, LeaveType, LeaveStatus } from '../../leave-requests/entities/leave-request.entity';
@@ -202,14 +202,14 @@ describe('Workflow Integration Tests', () => {
 
       // Step 4: Verify workflow completion
       const completedWorkflow = await workflowEngineService.getWorkflowStatus(workflowInstance.id);
-      expect(completedWorkflow.status).toBe('COMPLETED');
-      expect(completedWorkflow.completedAt).toBeDefined();
+      expect(completedWorkflow!.status).toBe('COMPLETED');
+      expect(completedWorkflow!.completedAt).toBeDefined();
 
       // Step 5: Verify leave request updated
       const updatedLeaveRequest = await leaveRequestRepo.findOne({
         where: { id: testLeaveRequest.id },
       });
-      expect(updatedLeaveRequest.status).toBe(LeaveStatus.APPROVED);
+      expect(updatedLeaveRequest!.status).toBe(LeaveStatus.APPROVED);
     });
 
     it('should handle workflow rejection properly', async () => {
@@ -243,14 +243,14 @@ describe('Workflow Integration Tests', () => {
 
       // Verify workflow cancelled
       const cancelledWorkflow = await workflowEngineService.getWorkflowStatus(workflowInstance.id);
-      expect(cancelledWorkflow.status).toBe('CANCELLED');
+      expect(cancelledWorkflow!.status).toBe('CANCELLED');
 
       // Verify leave request updated
       const updatedLeaveRequest = await leaveRequestRepo.findOne({
         where: { id: testLeaveRequest.id },
       });
-      expect(updatedLeaveRequest.status).toBe(LeaveStatus.REJECTED);
-      expect(updatedLeaveRequest.rejectionReason).toBe('Insufficient advance notice');
+      expect(updatedLeaveRequest!.status).toBe(LeaveStatus.REJECTED);
+      expect(updatedLeaveRequest!.rejectionReason).toBe('Insufficient advance notice');
     });
   });
 
@@ -292,10 +292,10 @@ describe('Workflow Integration Tests', () => {
 
       // Process manager approval first
       const managerStep = approvalSteps.find(step => step.stepOrder === 1);
-      expect(managerStep.assignedUserId).toBe(testManager.id);
+      expect(managerStep!.assignedUserId).toBe(testManager.id);
 
       await workflowEngineService.processApprovalDecision(
-        managerStep.id,
+        managerStep!.id,
         testManager.id,
         'approve',
         'Manager approval for extended leave'
@@ -303,8 +303,8 @@ describe('Workflow Integration Tests', () => {
 
       // Verify workflow progressed to next step
       const progressedWorkflow = await workflowEngineService.getWorkflowStatus(workflowInstance.id);
-      expect(progressedWorkflow.status).toBe('ACTIVE');
-      expect(progressedWorkflow.currentStepOrder).toBe(2);
+      expect(progressedWorkflow!.status).toBe('ACTIVE');
+      expect(progressedWorkflow!.currentStepOrder).toBe(2);
 
       // Process HR approval
       const hrStep = approvalSteps.find(step => step.stepOrder === 2);
@@ -318,7 +318,7 @@ describe('Workflow Integration Tests', () => {
 
         // Verify workflow completion
         const completedWorkflow = await workflowEngineService.getWorkflowStatus(workflowInstance.id);
-        expect(completedWorkflow.status).toBe('COMPLETED');
+        expect(completedWorkflow!.status).toBe('COMPLETED');
       }
     });
   });
@@ -329,7 +329,7 @@ describe('Workflow Integration Tests', () => {
       const delegation = await delegationService.createDelegation({
         delegatedFromId: testManager.id,
         delegatedToId: testHR.id,
-        delegationType: 'FULL_AUTHORITY',
+        delegationType: DelegationType.FULL_AUTHORITY,
         effectiveFrom: new Date('2024-01-01'),
         effectiveTo: new Date('2024-12-31'),
         reason: 'Extended absence',
@@ -371,7 +371,7 @@ describe('Workflow Integration Tests', () => {
 
       // Verify workflow completion
       const completedWorkflow = await workflowEngineService.getWorkflowStatus(workflowInstance.id);
-      expect(completedWorkflow.status).toBe('COMPLETED');
+      expect(completedWorkflow!.status).toBe('COMPLETED');
     });
   });
 
@@ -409,9 +409,9 @@ describe('Workflow Integration Tests', () => {
         relations: ['assignedUser'],
       });
 
-      expect(escalatedStep.status).toBe('ESCALATED');
-      expect(escalatedStep.escalationCount).toBe(1);
-      expect(escalatedStep.assignedUserId).not.toBe(testManager.id); // Should be escalated to higher level
+      expect(escalatedStep!.status).toBe('ESCALATED');
+      expect(escalatedStep!.escalationCount).toBe(1);
+      expect(escalatedStep!.assignedUserId).not.toBe(testManager.id); // Should be escalated to higher level
     });
   });
 
@@ -424,7 +424,7 @@ describe('Workflow Integration Tests', () => {
         firstName: 'Orphan',
         lastName: 'Employee',
         role: UserRole.EMPLOYEE,
-        manager: null, // No manager assigned
+        manager: undefined, // No manager assigned
         isActive: true,
       });
       await userRepo.save(orphanEmployee);

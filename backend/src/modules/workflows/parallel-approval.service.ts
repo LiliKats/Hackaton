@@ -87,10 +87,10 @@ export class ParallelApprovalService {
       timeoutHours: config.timeoutHours || stepDef.timeoutHours,
       dueAt: config.timeoutHours
         ? new Date(Date.now() + config.timeoutHours * 60 * 60 * 1000)
-        : null,
+        : undefined,
     });
 
-    const savedStep: ApprovalStep = await this.approvalStepRepository.save(step);
+    const savedStep = await this.approvalStepRepository.save(step);
 
     // Create individual audit entries for each approver
     await this.createApprovalNotifications(savedStep, config.approvers);
@@ -339,7 +339,7 @@ export class ParallelApprovalService {
     step.status = ApprovalStepStatus.REJECTED;
     step.decidedAt = new Date();
     step.decidedById = approverId;
-    step.comments = comments || undefined;
+    step.comments = comments || null;
 
     await manager.save(ApprovalStep, step);
 
@@ -377,7 +377,7 @@ export class ParallelApprovalService {
       step.status = ApprovalStepStatus.APPROVED;
       step.decidedAt = new Date();
       step.decidedById = approverId; // Last approver gets credit
-      step.comments = comments || undefined;
+      step.comments = comments || null;
     }
 
     await manager.save(ApprovalStep, step);

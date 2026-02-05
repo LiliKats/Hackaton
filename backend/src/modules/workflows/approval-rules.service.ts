@@ -229,7 +229,7 @@ export class ApprovalRulesService {
     }
 
     // 2. Check for acting manager
-    if (user.hasActingManager()) {
+    if (user.hasActingManager() && user.actingManager) {
       const actingManager = user.actingManager;
       const validation = await this.validateApprovalPermission(actingManager.id, context);
       if (validation.isValid) {
@@ -467,5 +467,5 @@ export class ApprovalRulesService {
   }
 }
 
-// Import these from typeorm for the resolveSpecificUsers and getActiveDelegations methods
-import { In, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+// These are already imported at the top
+import { In } from 'typeorm';

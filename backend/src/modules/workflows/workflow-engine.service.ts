@@ -317,7 +317,7 @@ export class WorkflowEngineService {
 
       // Create approval step
       const step = this.approvalStepRepository.create({
-        workflowInstanceId: workflowInstance.id,
+        workflowInstance: workflowInstance,
         stepOrder: stepDef.stepOrder,
         stepName: stepDef.stepName,
         stepType: stepDef.stepType,
@@ -328,7 +328,7 @@ export class WorkflowEngineService {
         timeoutHours: stepDef.timeoutHours,
         dueAt: stepDef.timeoutHours
           ? new Date(Date.now() + stepDef.timeoutHours * 60 * 60 * 1000)
-          : null,
+          : undefined,
       });
 
       steps.push(step);
@@ -479,7 +479,7 @@ export class WorkflowEngineService {
     step.status = status;
     step.decidedAt = new Date();
     step.decidedById = decidedById;
-    step.comments = comments || undefined;
+    step.comments = comments || null;
 
     // For multi-approver steps, track individual approvals
     if (step.stepType === StepType.ALL_OF_MULTIPLE || step.stepType === StepType.ANY_OF_MULTIPLE) {
@@ -550,7 +550,7 @@ export class WorkflowEngineService {
 
       if (leaveRequest) {
         leaveRequest.status = 'rejected' as any;
-        leaveRequest.rejectionReason = reason;
+        leaveRequest.rejectionReason = reason || null;
         await manager.save(LeaveRequest, leaveRequest);
       }
     }

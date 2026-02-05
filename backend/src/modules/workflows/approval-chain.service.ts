@@ -241,7 +241,7 @@ export class ApprovalChainService {
       step.status = newStatus;
       step.decidedAt = new Date();
       step.decidedById = approverId;
-      step.comments = comments || undefined;
+      step.comments = comments || null;
 
       await manager.save(ApprovalStep, step);
 
@@ -452,7 +452,7 @@ export class ApprovalChainService {
       timeoutHours: stepDef.timeoutHours,
       dueAt: stepDef.timeoutHours
         ? new Date(Date.now() + stepDef.timeoutHours * 60 * 60 * 1000)
-        : null,
+        : undefined,
     });
 
     return step;

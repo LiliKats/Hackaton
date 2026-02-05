@@ -190,7 +190,7 @@ describe('WorkflowEngineService', () => {
         canBeApprovedBy: jest.fn().mockReturnValue(true),
       };
 
-      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           findOne: jest.fn().mockResolvedValue(mockStepWithWorkflow),
           save: jest.fn().mockResolvedValue(mockStepWithWorkflow),
@@ -220,7 +220,7 @@ describe('WorkflowEngineService', () => {
         canBeApprovedBy: jest.fn().mockReturnValue(false),
       };
 
-      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           findOne: jest.fn().mockResolvedValue(mockStepWithWorkflow),
         });
@@ -246,7 +246,7 @@ describe('WorkflowEngineService', () => {
         assignedUser: { id: 'manager-1', manager: mockManager },
       };
 
-      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           findOne: jest.fn().mockResolvedValue(mockStepWithUser),
           save: jest.fn().mockResolvedValue({
@@ -312,7 +312,7 @@ describe('WorkflowEngineService', () => {
       const result = await service.getWorkflowStatus(workflowInstanceId);
 
       expect(result).toBeDefined();
-      expect(result.id).toBe(workflowInstanceId);
+      expect(result!.id).toBe(workflowInstanceId);
       expect(workflowInstanceRepo.findOne).toHaveBeenCalledWith({
         where: { id: workflowInstanceId },
         relations: expect.any(Array),
@@ -341,7 +341,7 @@ describe('WorkflowEngineService', () => {
         approvalSteps: [{ ...mockApprovalStep, isPending: jest.fn().mockReturnValue(true) }],
       };
 
-      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           findOne: jest.fn().mockResolvedValue(mockInstanceWithSteps),
           save: jest.fn().mockResolvedValue({
@@ -364,7 +364,7 @@ describe('WorkflowEngineService', () => {
       const reason = 'Test';
       const cancelledById = 'user-1';
 
-      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn) => {
+      jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn: any) => {
         return await fn({
           findOne: jest.fn().mockResolvedValue(null),
         });

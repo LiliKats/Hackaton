@@ -235,11 +235,10 @@ export class AutoApprovalService {
         description: 'Step automatically approved by system rule',
         entityType: step.workflowInstance.entityType,
         entityId: step.workflowInstance.entityId,
+        comments: `Auto-approved: ${autoApprovalResult.reason}`,
         metadata: {
           systemTriggered: true,
           automationRule: autoApprovalResult.ruleName,
-          autoApprovalReason: autoApprovalResult.reason,
-          additionalActions: autoApprovalResult.additionalActions,
         },
       });
 
@@ -301,7 +300,7 @@ export class AutoApprovalService {
         ruleUsageStats[ruleName] = (ruleUsageStats[ruleName] || 0) + 1;
       }
 
-      const reason = entry.metadata?.autoApprovalReason;
+      const reason = entry.comments;
       if (reason) {
         reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
       }

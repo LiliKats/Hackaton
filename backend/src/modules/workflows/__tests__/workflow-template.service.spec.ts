@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkflowTemplateService, CreateWorkflowTemplateDto } from '../workflow-template.service';
-import { WorkflowTemplate, WorkflowTrigger } from '../entities/workflow-template.entity';
+import { WorkflowTemplate, WorkflowTrigger, ApproverSelectionRule } from '../entities/workflow-template.entity';
+import { StepType } from '../entities/approval-step.entity';
 import { WorkflowContext } from '../workflow-engine.service';
 
 describe('WorkflowTemplateService', () => {
@@ -20,8 +21,8 @@ describe('WorkflowTemplateService', () => {
       {
         stepOrder: 1,
         stepName: 'Manager Approval',
-        stepType: 'SINGLE_APPROVER',
-        approverSelectionRule: 'DIRECT_MANAGER',
+        stepType: StepType.SINGLE_APPROVER,
+        approverSelectionRule: ApproverSelectionRule.DIRECT_MANAGER,
         isRequired: true,
         timeoutHours: 72,
       },
@@ -174,7 +175,7 @@ describe('WorkflowTemplateService', () => {
       const result = await service.selectTemplate(context);
 
       expect(result).toBeDefined();
-      expect(result.id).toBe('template-1'); // First template should match
+      expect(result!.id).toBe('template-1'); // First template should match
     });
 
     it('should return null if no templates match', async () => {
@@ -240,7 +241,7 @@ describe('WorkflowTemplateService', () => {
       const result = await service.selectTemplate(context);
 
       expect(result).toBeDefined();
-      expect(result.id).toBe('template-specific'); // More specific template should be selected
+      expect(result!.id).toBe('template-specific'); // More specific template should be selected
     });
   });
 
