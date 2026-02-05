@@ -244,6 +244,7 @@ describe('WorkflowEngineService', () => {
       const mockStepWithUser = {
         ...mockApprovalStep,
         assignedUser: { id: 'manager-1', manager: mockManager },
+        workflowInstance: mockWorkflowInstance,
       };
 
       jest.spyOn(workflowInstanceRepo.manager, 'transaction').mockImplementation(async (fn: any) => {

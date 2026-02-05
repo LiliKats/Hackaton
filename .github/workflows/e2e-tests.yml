@@ -1,0 +1,125 @@
+name: E2E Tests with Playwright
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  playwright-tests:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: leaveboard_test
+          POSTGRES_USER: test_user
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: |
+          cd frontend
+          npx playwright install --with-deps
+
+      - name: Build backend
+        run: |
+          cd backend
+          npm run build
+
+      - name: Start backend server
+        run: |
+          cd backend
+          npm run start:prod &
+          sleep 10
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: leaveboard_test
+          DB_USERNAME: test_user
+          DB_PASSWORD: test_password
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test_jwt_secret
+
+      - name: Run database migrations
+        run: |
+          cd backend
+          npm run migration:run
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: leaveboard_test
+          DB_USERNAME: test_user
+          DB_PASSWORD: test_password
+
+      - name: Seed test data
+        run: |
+          cd backend
+          npm run seed:run
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: leaveboard_test
+          DB_USERNAME: test_user
+          DB_PASSWORD: test_password
+
+      - name: Run Playwright tests
+        run: |
+          cd frontend
+          npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 30
+
+      - name: Upload test videos
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-videos
+          path: frontend/test-results/
+          retention-days: 7

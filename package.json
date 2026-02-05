@@ -18,7 +18,18 @@
     "docker:down": "docker-compose down",
     "docker:build": "docker-compose build",
     "db:migrate": "npm run migration:run --workspace=backend",
-    "db:seed": "npm run seed:run --workspace=backend"
+    "db:seed": "npm run seed:run --workspace=backend",
+    "test": "npm run test --workspaces",
+    "test:backend": "npm run test --workspace=backend",
+    "test:backend:watch": "npm run test:watch --workspace=backend",
+    "test:backend:cov": "npm run test:cov --workspace=backend",
+    "test:backend:e2e": "npm run test:e2e --workspace=backend",
+    "test:frontend": "npm run test:run --workspace=frontend",
+    "test:frontend:watch": "npm run test --workspace=frontend",
+    "test:frontend:cov": "npm run test:coverage --workspace=frontend",
+    "test:frontend:e2e": "npm run test:e2e --workspace=frontend",
+    "test:e2e": "npm run test:e2e --workspaces",
+    "test:coverage": "npm run test:backend:cov && npm run test:frontend:cov"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
