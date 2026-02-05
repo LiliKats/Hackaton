@@ -1,6 +1,87 @@
-import React from 'react';
+import React, { useState } from 'react';
+import VacationRequestForm from '@/components/VacationRequestForm';
+import RequestStatusCard from '@/components/RequestStatusCard';
+import { LeaveStatus, LeaveType } from '@/types';
 
 const LeaveRequests: React.FC = () => {
+  const [showRequestForm, setShowRequestForm] = useState(false);
+
+  // Sample data - replace with real API data
+  const [requests] = useState([
+    {
+      id: '1',
+      type: LeaveType.ANNUAL,
+      startDate: '2024-07-15',
+      endDate: '2024-07-29',
+      status: LeaveStatus.PENDING,
+      reason: 'Family vacation to Italy',
+      totalDays: 15,
+      submittedAt: '2024-06-10T10:30:00Z'
+    },
+    {
+      id: '2',
+      type: LeaveType.SICK,
+      startDate: '2024-06-10',
+      endDate: '2024-06-10',
+      status: LeaveStatus.APPROVED,
+      reason: 'Medical appointment',
+      totalDays: 1,
+      submittedAt: '2024-06-09T14:15:00Z'
+    },
+    {
+      id: '3',
+      type: LeaveType.PERSONAL,
+      startDate: '2024-08-01',
+      endDate: '2024-08-02',
+      status: LeaveStatus.APPROVED,
+      reason: 'Personal matters',
+      totalDays: 2,
+      submittedAt: '2024-05-20T09:00:00Z'
+    }
+  ]);
+
+  const handleNewRequest = () => {
+    setShowRequestForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowRequestForm(false);
+  };
+
+  const handleSubmitRequest = (formData: any) => {
+    console.log('Request submitted:', formData);
+    // TODO: Integrate with backend API
+
+    if (formData.action === 'plan') {
+      alert('Request saved as draft!');
+    } else {
+      alert('Request submitted for approval!');
+    }
+
+    setShowRequestForm(false);
+  };
+
+  const handleEditRequest = (id: string) => {
+    console.log('Edit request:', id);
+    // TODO: Implement edit functionality
+    alert(`Edit request ${id} - Feature coming soon!`);
+  };
+
+  const handleCancelRequest = (id: string) => {
+    console.log('Cancel request:', id);
+    // TODO: Implement cancel functionality
+    const confirmed = window.confirm('Are you sure you want to cancel this request?');
+    if (confirmed) {
+      alert(`Request ${id} cancelled!`);
+    }
+  };
+
+  const handleViewRequest = (id: string) => {
+    console.log('View request:', id);
+    // TODO: Implement view details
+    alert(`View details for request ${id} - Feature coming soon!`);
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -9,55 +90,61 @@ const LeaveRequests: React.FC = () => {
       </div>
 
       <div className="mb-6">
-        <button className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-          New Request
+        <button
+          onClick={handleNewRequest}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span>New Request</span>
         </button>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          <li className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="inline-block h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-                    📅
-                  </span>
-                </div>
-                <div className="ml-4">
-                  <div className="text-sm font-medium text-gray-900">Summer Vacation</div>
-                  <div className="text-sm text-gray-500">July 15 - July 29, 2024 • 14 days</div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                  Pending
-                </span>
-              </div>
-            </div>
-          </li>
-          <li className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="inline-block h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-                    🏥
-                  </span>
-                </div>
-                <div className="ml-4">
-                  <div className="text-sm font-medium text-gray-900">Sick Leave</div>
-                  <div className="text-sm text-gray-500">June 10, 2024 • 1 day</div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  Approved
-                </span>
-              </div>
-            </div>
-          </li>
-        </ul>
+      {/* Requests List */}
+      <div className="space-y-6">
+        {requests.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-24 h-24 mx-auto mb-4 text-6xl">📅</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No requests yet</h3>
+            <p className="text-gray-600 mb-6">Start by creating your first vacation request!</p>
+            <button
+              onClick={handleNewRequest}
+              className="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              Create Your First Request
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            <h2 className="text-lg font-medium text-gray-900">Your Requests</h2>
+            {requests.map((request) => (
+              <RequestStatusCard
+                key={request.id}
+                id={request.id}
+                type={request.type}
+                startDate={request.startDate}
+                endDate={request.endDate}
+                status={request.status}
+                reason={request.reason}
+                totalDays={request.totalDays}
+                submittedAt={request.submittedAt}
+                onEdit={handleEditRequest}
+                onCancel={handleCancelRequest}
+                onView={handleViewRequest}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Vacation Request Form Modal */}
+      {showRequestForm && (
+        <VacationRequestForm
+          onClose={handleCloseForm}
+          onSubmit={handleSubmitRequest}
+        />
+      )}
     </div>
   );
 };
