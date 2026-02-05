@@ -20,7 +20,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get('DATABASE_HOST'),
-        port: +configService.get<number>('DATABASE_PORT'),
+        port: +configService.get<number>('DATABASE_PORT', 5432),
         username: configService.get('DATABASE_USER'),
         password: configService.get('DATABASE_PASSWORD'),
         database: configService.get('DATABASE_NAME'),
