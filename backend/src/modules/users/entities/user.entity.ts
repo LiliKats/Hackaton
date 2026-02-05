@@ -53,6 +53,45 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  // Approval authority and delegation fields
+  @Column({ type: 'int', nullable: true })
+  maxApprovalDays: number; // Maximum leave days this user can approve
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  maxApprovalValue: number; // Maximum financial value for approval
+
+  @Column({ type: 'jsonb', default: {} })
+  approvalPermissions: {
+    canApproveLeaveTypes?: string[];
+    canApproveDepartments?: string[];
+    canApproveUserLevels?: string[];
+    requiresManagerApproval?: boolean;
+    emergencyApprovalOnly?: boolean;
+  };
+
+  // Current delegation status
+  @Column({ default: false })
+  isDelegatingAuthority: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  delegationStartDate: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  delegationEndDate: Date;
+
+  @Column({ type: 'text', nullable: true })
+  delegationReason: string;
+
+  // Acting manager assignment
+  @ManyToOne(() => User, { nullable: true })
+  actingManager: User;
+
+  @Column({ type: 'timestamp', nullable: true })
+  actingManagerFrom: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  actingManagerTo: Date;
+
   @ManyToOne(() => Team, (team) => team.members, { nullable: true })
   team: Team;
 
@@ -70,4 +109,57 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Helper methods for delegation and approval
+  hasApprovalAuthority(): boolean {
+    return this.role === UserRole.MANAGER ||
+           this.role === UserRole.HR ||
+           this.role === UserRole.ADMIN ||
+           this.maxApprovalDays > 0;
+  }
+
+  isCurrentlyDelegating(): boolean {
+    if (!this.isDelegatingAuthority) return false;
+    const now = new Date();
+    return this.delegationStartDate <= now && this.delegationEndDate >= now;
+  }
+
+  hasActingManager(): boolean {
+    if (!this.actingManager) return false;
+    const now = new Date();
+    return this.actingManagerFrom <= now && this.actingManagerTo >= now;
+  }
+
+  getEffectiveManager(): User {
+    if (this.hasActingManager()) {
+      return this.actingManager;
+    }
+    return this.manager;
+  }
+
+  canApproveLeaveRequest(leaveType: string, days: number, userDepartment?: string): boolean {
+    if (!this.hasApprovalAuthority()) return false;
+
+    // Check maximum days limit
+    if (this.maxApprovalDays && days > this.maxApprovalDays) return false;
+
+    // Check leave type permissions
+    const permissions = this.approvalPermissions;
+    if (permissions.canApproveLeaveTypes &&
+        !permissions.canApproveLeaveTypes.includes(leaveType)) {
+      return false;
+    }
+
+    // Check department permissions
+    if (permissions.canApproveDepartments && userDepartment &&
+        !permissions.canApproveDepartments.includes(userDepartment)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  get fullName(): string {
+    return `${this.firstName} ${this.lastName}`;
+  }
 }

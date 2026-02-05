@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { WorkflowInstance } from '../../workflows/entities/workflow-instance.entity';
 
 export enum LeaveType {
   ANNUAL = 'annual',
@@ -19,6 +20,8 @@ export enum LeaveStatus {
 }
 
 @Entity('leave_requests')
+@Index(['status', 'startDate'])
+@Index(['user', 'status'])
 export class LeaveRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -60,9 +63,34 @@ export class LeaveRequest {
   @Column({ type: 'text', nullable: true })
   rejectionReason: string;
 
+  // Workflow integration
+  @OneToOne(() => WorkflowInstance, { nullable: true, cascade: true })
+  @JoinColumn({ name: 'workflow_instance_id' })
+  workflowInstance: WorkflowInstance;
+
+  @Column({ name: 'workflow_instance_id', nullable: true })
+  workflowInstanceId: string;
+
+  // Legacy approval system support (for backward compatibility)
+  @Column({ default: false })
+  useWorkflowApproval: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Helper methods for workflow integration
+  hasActiveWorkflow(): boolean {
+    return this.workflowInstance && this.workflowInstance.status === 'ACTIVE';
+  }
+
+  isWorkflowCompleted(): boolean {
+    return this.workflowInstance && this.workflowInstance.status === 'COMPLETED';
+  }
+
+  getCurrentApprovalStep(): any {
+    return this.workflowInstance?.getCurrentStep();
+  }
 }
