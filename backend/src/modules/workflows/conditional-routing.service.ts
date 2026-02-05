@@ -514,8 +514,8 @@ export class ConditionalRoutingService {
             const autoApprovalMod: StepModification = {
               stepId: currentStep.id,
               changes: {
-                autoApprove: true,
-                autoApprovalReason: action.parameters.reason,
+                // Use stepType to indicate auto-approval
+                stepType: StepType.AUTO_APPROVAL,
               },
             };
             decision.modifications.push(autoApprovalMod);
@@ -527,8 +527,8 @@ export class ConditionalRoutingService {
           const escalationMod: StepModification = {
             stepId: action.parameters.stepId || 'current',
             changes: {
-              escalate: true,
-              escalationReason: action.parameters.reason,
+              // For escalation, we can change timeout to force immediate escalation
+              timeoutHours: 0,
             },
           };
           decision.modifications.push(escalationMod);

@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Team } from '../teams/entities/team.entity';
-import { ManagerDelegation } from '../delegations/entities/manager-delegation.entity';
+import { ManagerDelegation, DelegationStatus } from '../delegations/entities/manager-delegation.entity';
 import { ApproverSelectionRule } from './entities/workflow-template.entity';
 import { WorkflowContext } from './workflow-engine.service';
 
@@ -395,7 +395,7 @@ export class ApprovalRulesService {
     return await this.delegationRepository.find({
       where: {
         delegatedFromId: userId,
-        status: 'ACTIVE',
+        status: DelegationStatus.ACTIVE,
         effectiveFrom: LessThanOrEqual(now),
         effectiveTo: MoreThanOrEqual(now),
       },

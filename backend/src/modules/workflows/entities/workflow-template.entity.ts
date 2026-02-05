@@ -7,6 +7,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { WorkflowInstance } from './workflow-instance.entity';
+import { StepType } from './approval-step.entity';
 
 export enum WorkflowTrigger {
   LEAVE_REQUEST_CREATED = 'LEAVE_REQUEST_CREATED',
@@ -14,12 +15,8 @@ export enum WorkflowTrigger {
   ESCALATION_TIMEOUT = 'ESCALATION_TIMEOUT',
 }
 
-export enum ApprovalStepType {
-  SINGLE_APPROVER = 'SINGLE_APPROVER',
-  ANY_OF_MULTIPLE = 'ANY_OF_MULTIPLE',
-  ALL_OF_MULTIPLE = 'ALL_OF_MULTIPLE',
-  CONDITIONAL = 'CONDITIONAL',
-}
+// Re-export StepType as ApprovalStepType for backward compatibility
+export { StepType as ApprovalStepType };
 
 export enum ApproverSelectionRule {
   DIRECT_MANAGER = 'DIRECT_MANAGER',
@@ -59,7 +56,7 @@ export class WorkflowTemplate {
   stepDefinitions: {
     stepOrder: number;
     stepName: string;
-    stepType: ApprovalStepType;
+    stepType: StepType;
     approverSelectionRule: ApproverSelectionRule;
     specificUserIds?: string[];
     isRequired: boolean;

@@ -283,7 +283,11 @@ export class WorkflowsController {
   @ApiOperation({ summary: 'Create a custom routing rule' })
   @ApiResponse({ status: 201, description: 'Routing rule created successfully' })
   async createRoutingRule(@Body(ValidationPipe) ruleDto: CreateRoutingRuleDto) {
-    return await this.conditionalRoutingService.createCustomRoutingRule(ruleDto);
+    const rule = {
+      ...ruleDto,
+      isActive: ruleDto.isActive ?? true, // Default to true if not provided
+    };
+    return await this.conditionalRoutingService.createCustomRoutingRule(rule);
   }
 
   // Manager Analytics

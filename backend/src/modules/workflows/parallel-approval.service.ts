@@ -90,7 +90,7 @@ export class ParallelApprovalService {
         : null,
     });
 
-    const savedStep = await this.approvalStepRepository.save(step);
+    const savedStep: ApprovalStep = await this.approvalStepRepository.save(step);
 
     // Create individual audit entries for each approver
     await this.createApprovalNotifications(savedStep, config.approvers);
@@ -300,7 +300,7 @@ export class ParallelApprovalService {
       affectedUserId: approverId,
       entityType: step.workflowInstance.entityType,
       entityId: step.workflowInstance.entityId,
-      metadata: { reason, removedApprover: true },
+      metadata: { systemTriggered: true },
     });
 
     await this.auditRepository.save(auditEntry);
@@ -339,7 +339,7 @@ export class ParallelApprovalService {
     step.status = ApprovalStepStatus.REJECTED;
     step.decidedAt = new Date();
     step.decidedById = approverId;
-    step.comments = comments;
+    step.comments = comments || undefined;
 
     await manager.save(ApprovalStep, step);
 
@@ -377,7 +377,7 @@ export class ParallelApprovalService {
       step.status = ApprovalStepStatus.APPROVED;
       step.decidedAt = new Date();
       step.decidedById = approverId; // Last approver gets credit
-      step.comments = comments;
+      step.comments = comments || undefined;
     }
 
     await manager.save(ApprovalStep, step);
@@ -388,9 +388,7 @@ export class ParallelApprovalService {
       comments,
       metadata: {
         ...metadata,
-        parallelApproval: true,
-        approvalCount: step.completedApproverIds.length,
-        requiredCount: this.getRequiredApprovalCount(step),
+        teamImpact: `Parallel approval: ${step.completedApproverIds.length}/${this.getRequiredApprovalCount(step)} completed`,
       },
     });
 

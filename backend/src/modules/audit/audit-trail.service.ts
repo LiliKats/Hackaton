@@ -639,7 +639,7 @@ export class AuditTrailService {
         requirement: 'SOX - Financial Controls',
         status: 'compliant', // Would need financial approval validation
         details: 'All financial approvals properly documented',
-        evidenceCount: auditEntries.filter(e => e.metadata?.financialImpact).length,
+        evidenceCount: auditEntries.filter(e => e.action === AuditAction.STEP_APPROVED).length,
       });
     }
 

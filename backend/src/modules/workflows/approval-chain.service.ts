@@ -241,7 +241,7 @@ export class ApprovalChainService {
       step.status = newStatus;
       step.decidedAt = new Date();
       step.decidedById = approverId;
-      step.comments = comments;
+      step.comments = comments || undefined;
 
       await manager.save(ApprovalStep, step);
 
@@ -444,7 +444,7 @@ export class ApprovalChainService {
       workflowInstanceId,
       stepOrder: stepDef.stepOrder,
       stepName: stepDef.stepName,
-      stepType: stepDef.stepType as StepType,
+      stepType: stepDef.stepType,
       status: ApprovalStepStatus.PENDING,
       assignedUserId: approvers[0].id,
       requiredApproverIds: approvers.map(u => u.id),
@@ -467,7 +467,7 @@ export class ApprovalChainService {
       workflowInstanceId,
       stepOrder: stepDef.stepOrder,
       stepName: stepDef.stepName,
-      stepType: stepDef.stepType as StepType,
+      stepType: stepDef.stepType,
       status: ApprovalStepStatus.APPROVED,
       isRequired: stepDef.isRequired,
       wasAutoApproved: true,

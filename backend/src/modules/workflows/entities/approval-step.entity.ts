@@ -31,6 +31,9 @@ export enum StepType {
   AUTO_APPROVAL = 'AUTO_APPROVAL',
 }
 
+// Re-export for backward compatibility
+export { StepType as ApprovalStepType };
+
 @Entity('approval_steps')
 @Index(['workflowInstanceId', 'stepOrder'])
 @Index(['assignedUserId', 'status', 'dueAt'])

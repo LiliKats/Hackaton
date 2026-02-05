@@ -12,7 +12,7 @@ import {
 } from './entities/approval-step.entity';
 import { WorkflowTemplate } from './entities/workflow-template.entity';
 import { ApprovalHistory, AuditAction } from '../audit/entities/approval-history.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { LeaveRequest } from '../leave-requests/entities/leave-request.entity';
 import { WorkflowTemplateService } from './workflow-template.service';
 import { ApprovalRulesService } from './approval-rules.service';
@@ -219,7 +219,7 @@ export class WorkflowEngineService {
       // Update workflow status
       workflowInstance.status = WorkflowStatus.CANCELLED;
       workflowInstance.cancelledAt = new Date();
-      workflowInstance.cancellationReason = reason;
+      workflowInstance.cancellationReason = reason || 'No reason provided';
 
       await manager.save(WorkflowInstance, workflowInstance);
 
@@ -320,7 +320,7 @@ export class WorkflowEngineService {
         workflowInstanceId: workflowInstance.id,
         stepOrder: stepDef.stepOrder,
         stepName: stepDef.stepName,
-        stepType: stepDef.stepType as StepType,
+        stepType: stepDef.stepType,
         status: ApprovalStepStatus.PENDING,
         assignedUserId: approvers[0]?.id,
         requiredApproverIds: approvers.map(u => u.id),
@@ -436,12 +436,12 @@ export class WorkflowEngineService {
     manager: EntityManager,
     workflowInstance: WorkflowInstance,
     rejectedStep: ApprovalStep,
-    reason: string,
+    reason: string | undefined,
   ): Promise<StepExecutionResult> {
     // Mark workflow as cancelled
     workflowInstance.status = WorkflowStatus.CANCELLED;
     workflowInstance.cancelledAt = new Date();
-    workflowInstance.cancellationReason = reason;
+    workflowInstance.cancellationReason = reason || 'No reason provided';
     await manager.save(WorkflowInstance, workflowInstance);
 
     // Update the underlying entity (e.g., reject the leave request)
@@ -479,7 +479,7 @@ export class WorkflowEngineService {
     step.status = status;
     step.decidedAt = new Date();
     step.decidedById = decidedById;
-    step.comments = comments;
+    step.comments = comments || undefined;
 
     // For multi-approver steps, track individual approvals
     if (step.stepType === StepType.ALL_OF_MULTIPLE || step.stepType === StepType.ANY_OF_MULTIPLE) {
@@ -517,7 +517,7 @@ export class WorkflowEngineService {
 
     // If no manager, escalate to HR role
     return await this.userRepository.findOne({
-      where: { role: 'hr', isActive: true },
+      where: { role: UserRole.HR, isActive: true },
     });
   }
 
@@ -541,7 +541,7 @@ export class WorkflowEngineService {
   private async updateEntityAfterWorkflowRejection(
     manager: EntityManager,
     workflowInstance: WorkflowInstance,
-    reason: string,
+    reason: string | undefined,
   ): Promise<void> {
     if (workflowInstance.entityType === 'leave_request') {
       const leaveRequest = await manager.findOne(LeaveRequest, {

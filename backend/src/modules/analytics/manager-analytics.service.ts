@@ -640,7 +640,20 @@ export class ManagerAnalyticsService {
   }
 
   private async calculateMemberMetrics(members: User[], startDate: Date, endDate: Date) {
-    const memberMetrics = [];
+    const memberMetrics: Array<{
+      userId: string;
+      userName: string;
+      role: UserRole;
+      metrics: {
+        totalLeaveRequests: number;
+        approvedLeaves: number;
+        rejectedLeaves: number;
+        pendingLeaves: number;
+        totalLeaveDays: number;
+        remainingLeaveDays: number;
+        averageRequestProcessingTime: number;
+      };
+    }> = [];
 
     for (const member of members) {
       const leaveRequests = await this.leaveRequestRepository.find({
@@ -739,7 +752,13 @@ export class ManagerAnalyticsService {
 
   private async generateCapacityForecast(team: Team, forecastDays: number) {
     // Simplified capacity forecasting
-    const forecast = [];
+    const forecast: Array<{
+      date: string;
+      availableMembers: number;
+      onLeaveMembers: number;
+      capacityPercentage: number;
+      riskLevel: 'low' | 'medium' | 'high';
+    }> = [];
     const today = new Date();
 
     for (let i = 0; i < forecastDays; i++) {
