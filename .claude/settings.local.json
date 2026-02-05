@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npm run start:dev:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix all backend TypeScript compilation errors for production builds\n\n- Fix ApprovalStep entity field mappings \\(assigneeId -> assignedUserId, completedAt -> decidedAt\\)\n- Add missing enum imports and use proper enum values \\(ApprovalStepStatus, StepType, WorkflowStatus\\)\n- Fix seeds file to use correct entity fields and remove auto-generated ID assignments\n- Update workflow-approvals service to use actual entity fields instead of non-existent metadata\n- Add ProcessApprovalDto class definition in workflows controller\n- Handle nullable User types with proper null checks\n- Remove references to non-existent entity fields \\(managerNotes, metadata\\)\n- Fix array type declarations in seeds service\n- All backend modules now compile successfully and can be built for production\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(npm test:*)",
+      "Bash(npm install)",
+      "Bash(npm run test:cov:*)"
     ]
   }
 }

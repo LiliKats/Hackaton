@@ -161,10 +161,10 @@ jobs:
           cd frontend
           npm ci
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
           cd frontend
-          npm run test -- --coverage --watchAll=false
+          npm run test:coverage
 
       - name: Upload test coverage
         uses: codecov/codecov-action@v3
