@@ -9,7 +9,7 @@ import { LeaveRequestsModule } from './modules/leave-requests/leave-requests.mod
 import { TeamsModule } from './modules/teams/teams.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
-import { SimpleWorkflowsController } from './modules/workflows/simple-workflows.controller';
+// import { SimpleWorkflowsController } from './modules/workflows/simple-workflows.controller';
 
 @Module({
   imports: [
@@ -17,25 +17,25 @@ import { SimpleWorkflowsController } from './modules/workflows/simple-workflows.
       isGlobal: true,
       envFilePath: '.env',
     }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: './database.sqlite',
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: process.env.NODE_ENV === 'development',
-        logging: process.env.NODE_ENV === 'development',
-      }),
-      inject: [ConfigService],
-    }),
-    AuthModule,
-    UsersModule,
-    LeaveRequestsModule,
-    TeamsModule,
-    CalendarModule,
-    WorkflowsModule, // Re-enabled after fixing compilation issues
+    // TypeOrmModule.forRootAsync({
+    //   imports: [ConfigModule],
+    //   useFactory: (configService: ConfigService) => ({
+    //     type: 'sqlite',
+    //     database: './database.sqlite',
+    //     entities: [__dirname + '/**/*.entity{.ts,.js}'],
+    //     synchronize: process.env.NODE_ENV === 'development',
+    //     logging: process.env.NODE_ENV === 'development',
+    //   }),
+    //   inject: [ConfigService],
+    // }),
+    // AuthModule,
+    // UsersModule,
+    // LeaveRequestsModule,
+    // TeamsModule,
+    // CalendarModule,
+    // WorkflowsModule, // Temporarily disabled due to database connection issues
   ],
-  controllers: [AppController, SimpleWorkflowsController],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
