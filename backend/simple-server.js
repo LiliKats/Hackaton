@@ -177,6 +177,92 @@ app.get('/api/workflows/instances/:instanceId', (req, res) => {
   });
 });
 
+// Get approved leave requests for calendar display
+app.get('/api/leave-requests/approved', (req, res) => {
+  console.log('📅 Fetching approved leave requests for calendar...');
+
+  // Convert processed approvals to calendar format
+  const approvedLeaves = processedApprovals
+    .filter(approval => approval.decision === 'approve')
+    .map(approval => {
+      const startDate = new Date(approval.startDate);
+      const endDate = new Date(approval.endDate);
+      const leaves = [];
+
+      // Generate entries for each day in the leave period
+      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        leaves.push({
+          employeeId: approval.requestorName.toLowerCase().replace(/\s+/g, '-'), // Generate consistent ID
+          employeeName: approval.requestorName,
+          employeeEmail: approval.requestorEmail,
+          date: date.toISOString().split('T')[0], // YYYY-MM-DD format
+          leaveType: approval.leaveType,
+          status: 'APPROVED',
+          reason: approval.reason,
+          approvedAt: approval.processedAt,
+          approvedBy: approval.processedBy,
+        });
+      }
+
+      return leaves;
+    })
+    .flat(); // Flatten array of arrays
+
+  console.log(`✅ Returning ${approvedLeaves.length} approved leave days`);
+  res.json(approvedLeaves);
+});
+
+// Get all leave requests (pending + approved) for comprehensive calendar view
+app.get('/api/leave-requests/all', (req, res) => {
+  console.log('📋 Fetching all leave requests for comprehensive calendar view...');
+
+  const allLeaves = [];
+
+  // Add pending requests
+  pendingApprovals.forEach(approval => {
+    const startDate = new Date(approval.startDate);
+    const endDate = new Date(approval.endDate);
+
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+      allLeaves.push({
+        employeeId: approval.requestorName.toLowerCase().replace(/\s+/g, '-'),
+        employeeName: approval.requestorName,
+        employeeEmail: approval.requestorEmail,
+        date: date.toISOString().split('T')[0],
+        leaveType: approval.leaveType,
+        status: 'PENDING',
+        reason: approval.reason,
+        submittedAt: approval.submittedAt,
+      });
+    }
+  });
+
+  // Add approved requests
+  processedApprovals.forEach(approval => {
+    if (approval.decision === 'approve') {
+      const startDate = new Date(approval.startDate);
+      const endDate = new Date(approval.endDate);
+
+      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        allLeaves.push({
+          employeeId: approval.requestorName.toLowerCase().replace(/\s+/g, '-'),
+          employeeName: approval.requestorName,
+          employeeEmail: approval.requestorEmail,
+          date: date.toISOString().split('T')[0],
+          leaveType: approval.leaveType,
+          status: 'APPROVED',
+          reason: approval.reason,
+          approvedAt: approval.processedAt,
+          approvedBy: approval.processedBy,
+        });
+      }
+    }
+  });
+
+  console.log(`📅 Returning ${allLeaves.length} total leave days (pending + approved)`);
+  res.json(allLeaves);
+});
+
 // Add some debug endpoints
 app.get('/api/debug/processed', (req, res) => {
   res.json({
