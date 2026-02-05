@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px; padding: 10px 20px; cursor: pointer; }
+        #results { margin-top: 20px; padding: 20px; border: 1px solid #ccc; background: #f9f9f9; white-space: pre-wrap; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Backend API Test</h1>
+    <p>Test the backend API from the browser (simulating frontend calls)</p>
+
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testApprovals()">Test Pending Approvals</button>
+    <button onclick="testApproval()">Test Process Approval</button>
+
+    <div id="results">Click a button to test the API...</div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:3002/api';
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>\n`;
+            console.log(message);
+        }
+
+        async function testHealth() {
+            log('Testing health endpoint...');
+            try {
+                log('Making fetch request to: ' + `${API_BASE}/health`);
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                log(`Health check success: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log(`Health check failed: ${error.message}`, 'error');
+                log(`Error details: ${error.stack}`, 'error');
+            }
+        }
+
+        async function testApprovals() {
+            log('Testing pending approvals endpoint...');
+            try {
+                const response = await fetch(`${API_BASE}/workflows/my-pending-approvals`);
+                const data = await response.json();
+                log(`Pending approvals success: Found ${data.length} approvals`, 'success');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log(`Pending approvals failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testApproval() {
+            log('Testing approval processing...');
+            try {
+                const response = await fetch(`${API_BASE}/workflows/steps/mock-step-1/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        decision: 'approve',
+                        comments: 'Test approval from browser'
+                    })
+                });
+                const data = await response.json();
+                log(`Approval processing success: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log(`Approval processing failed: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

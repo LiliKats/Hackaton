@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 10px 0; padding: 10px; border-left: 4px solid #007cba; background: #f0f8ff; }
+        .error { border-left-color: #d32f2f; background: #ffebee; }
+        .success { border-left-color: #388e3c; background: #e8f5e9; }
+    </style>
+</head>
+<body>
+    <h1>Debug Backend Connection</h1>
+    <button onclick="runDiagnostics()">Run Full Diagnostics</button>
+    <div id="output"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        async function checkNetworkConnectivity() {
+            log('🌐 Testing basic network connectivity...');
+
+            // Test 1: Can we reach google?
+            try {
+                const response = await fetch('https://www.google.com', { mode: 'no-cors' });
+                log('✅ Internet connection working', 'success');
+            } catch (error) {
+                log('❌ Internet connection failed: ' + error.message, 'error');
+            }
+
+            // Test 2: Can we reach localhost in general?
+            try {
+                const response = await fetch('http://localhost:3007', { mode: 'no-cors' });
+                log('✅ Localhost access working', 'success');
+            } catch (error) {
+                log('⚠️ Localhost access issue: ' + error.message, 'error');
+            }
+        }
+
+        async function checkBackendStatus() {
+            log('🔍 Testing backend server status...');
+
+            const tests = [
+                { url: 'http://127.0.0.1:3002/api/health', name: 'Health Endpoint' },
+                { url: 'http://127.0.0.1:3002/api/workflows/my-pending-approvals', name: 'Approvals Endpoint' }
+            ];
+
+            for (const test of tests) {
+                try {
+                    log(`Testing ${test.name} at ${test.url}...`);
+
+                    const startTime = Date.now();
+                    const response = await fetch(test.url, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache',
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+                    const endTime = Date.now();
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        log(`✅ ${test.name} working! (${endTime - startTime}ms)`, 'success');
+                        log(`Response: ${JSON.stringify(data, null, 2)}`);
+                    } else {
+                        log(`❌ ${test.name} failed: HTTP ${response.status} ${response.statusText}`, 'error');
+                    }
+                } catch (error) {
+                    log(`❌ ${test.name} error: ${error.message}`, 'error');
+                    log(`Error type: ${error.name}`, 'error');
+                }
+            }
+        }
+
+        async function checkCORS() {
+            log('🔒 Testing CORS configuration...');
+
+            try {
+                const response = await fetch('http://localhost:3002/api/health', {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+
+                log(`CORS preflight response: ${response.status}`, response.ok ? 'success' : 'error');
+
+                // Log CORS headers
+                const corsHeaders = [
+                    'Access-Control-Allow-Origin',
+                    'Access-Control-Allow-Methods',
+                    'Access-Control-Allow-Headers'
+                ];
+
+                corsHeaders.forEach(header => {
+                    const value = response.headers.get(header);
+                    log(`${header}: ${value || 'NOT SET'}`);
+                });
+
+            } catch (error) {
+                log(`CORS test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runDiagnostics() {
+            document.getElementById('output').innerHTML = '';
+            log('🚀 Starting comprehensive diagnostics...');
+
+            await checkNetworkConnectivity();
+            await checkBackendStatus();
+            await checkCORS();
+
+            log('📋 Diagnostics complete!');
+        }
+
+        // Auto-run diagnostics when page loads
+        window.addEventListener('load', runDiagnostics);
+    </script>
+</body>
+</html>
