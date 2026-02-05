@@ -89,7 +89,6 @@ The backend follows a **modular NestJS architecture** with the following key mod
 
 - **Supporting Services**:
   - `calendar/` - Calendar integration and availability
-  - `teams/` - Team structure and management
 
 ### Frontend Architecture
 
