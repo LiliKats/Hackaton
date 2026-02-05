@@ -26,6 +26,7 @@ import { ConditionalRoutingService } from './conditional-routing.service';
 import { AutoApprovalService } from '../automation/auto-approval.service';
 import { ManagerAnalyticsService } from '../analytics/manager-analytics.service';
 import { AuditTrailService } from '../audit/audit-trail.service';
+import { WorkflowApprovalsService } from './workflow-approvals.service';
 
 class ProcessApprovalDto {
   decision: 'approve' | 'reject';
@@ -63,6 +64,7 @@ export class WorkflowsController {
     private readonly autoApprovalService: AutoApprovalService,
     private readonly managerAnalyticsService: ManagerAnalyticsService,
     private readonly auditTrailService: AuditTrailService,
+    private readonly workflowApprovalsService: WorkflowApprovalsService,
   ) {}
 
   // Workflow Templates
@@ -177,7 +179,7 @@ export class WorkflowsController {
     @Body(ValidationPipe) approvalDto: ProcessApprovalDto,
     @GetUser() currentUser: User,
   ) {
-    return await this.workflowEngineService.processApprovalDecision(
+    return await this.workflowApprovalsService.processApprovalDecision(
       stepId,
       currentUser.id,
       approvalDto.decision,
@@ -206,7 +208,7 @@ export class WorkflowsController {
   @ApiOperation({ summary: 'Get pending approvals for current user' })
   @ApiResponse({ status: 200, description: 'Pending approvals retrieved successfully' })
   async getMyPendingApprovals(@GetUser() currentUser: User) {
-    return await this.workflowEngineService.getActiveWorkflowsForUser(currentUser.id);
+    return await this.workflowApprovalsService.getPendingApprovalsForUser(currentUser.id);
   }
 
   @Get('parallel-approvals/:stepId/status')

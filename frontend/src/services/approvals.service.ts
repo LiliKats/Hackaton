@@ -51,16 +51,27 @@ export const approvalsService = {
    * Get all pending approvals for the current user
    */
   async getPendingApprovals(): Promise<PendingApproval[]> {
-    const response = await api.get<PendingApproval[]>('/workflows/my-pending-approvals');
-    return response.data;
+    try {
+      const response = await api.get<PendingApproval[]>('/workflows/my-pending-approvals');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching pending approvals:', error);
+      // Return empty array on error instead of throwing
+      return [];
+    }
   },
 
   /**
    * Process approval decision for a workflow step
    */
   async processApproval(stepId: string, decision: ApprovalDecision): Promise<WorkflowInstance> {
-    const response = await api.post<WorkflowInstance>(`/workflows/steps/${stepId}/approve`, decision);
-    return response.data;
+    try {
+      const response = await api.post<WorkflowInstance>(`/workflows/steps/${stepId}/approve`, decision);
+      return response.data;
+    } catch (error) {
+      console.error('Error processing approval:', error);
+      throw new Error('Failed to process approval decision. Please try again.');
+    }
   },
 
   /**

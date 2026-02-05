@@ -28,8 +28,8 @@ const Layout = () => {
           setPendingApprovalsCount(approvals.length);
         } catch (error) {
           console.error('Error fetching pending approvals count:', error);
-          // Set sample count for development
-          setPendingApprovalsCount(3);
+          // Set zero count on error instead of showing fake data
+          setPendingApprovalsCount(0);
         }
       }
     };

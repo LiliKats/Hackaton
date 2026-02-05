@@ -13,7 +13,7 @@ const Approvals: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'priority' | 'type'>('date');
 
-  // Sample data - replace with real API call
+  // Sample data - updated for 2026 (not used since we're using real backend API)
   const samplePendingApprovals: PendingApproval[] = [
     {
       stepId: 'step-001',
@@ -21,11 +21,11 @@ const Approvals: React.FC = () => {
       requestorName: 'John Doe',
       requestorEmail: 'john.doe@company.com',
       leaveType: LeaveType.ANNUAL,
-      startDate: '2024-03-15',
-      endDate: '2024-03-22',
+      startDate: '2026-05-15',
+      endDate: '2026-05-22',
       totalDays: 8,
       reason: 'Family vacation to Italy. Planning this trip for months.',
-      submittedAt: '2024-02-01T10:30:00Z',
+      submittedAt: '2026-04-10T10:30:00Z',
       priority: 'high',
       currentStep: 'Manager Approval',
     },
@@ -35,11 +35,11 @@ const Approvals: React.FC = () => {
       requestorName: 'Jane Smith',
       requestorEmail: 'jane.smith@company.com',
       leaveType: LeaveType.SICK,
-      startDate: '2024-02-10',
-      endDate: '2024-02-10',
+      startDate: '2026-03-12',
+      endDate: '2026-03-12',
       totalDays: 1,
       reason: 'Medical appointment - routine checkup',
-      submittedAt: '2024-02-09T14:15:00Z',
+      submittedAt: '2026-03-11T14:15:00Z',
       priority: 'urgent',
       currentStep: 'Manager Approval',
     },
@@ -49,11 +49,11 @@ const Approvals: React.FC = () => {
       requestorName: 'Mike Johnson',
       requestorEmail: 'mike.johnson@company.com',
       leaveType: LeaveType.PERSONAL,
-      startDate: '2024-03-01',
-      endDate: '2024-03-03',
+      startDate: '2026-04-14',
+      endDate: '2026-04-16',
       totalDays: 3,
       reason: 'Personal matters requiring immediate attention',
-      submittedAt: '2024-02-20T09:00:00Z',
+      submittedAt: '2026-03-25T09:00:00Z',
       priority: 'medium',
       currentStep: 'Manager Approval',
     },
@@ -63,11 +63,11 @@ const Approvals: React.FC = () => {
       requestorName: 'Sarah Wilson',
       requestorEmail: 'sarah.wilson@company.com',
       leaveType: LeaveType.UNPAID,
-      startDate: '2024-04-01',
-      endDate: '2024-04-30',
-      totalDays: 30,
+      startDate: '2026-07-01',
+      endDate: '2026-07-31',
+      totalDays: 31,
       reason: 'Extended unpaid leave for personal sabbatical and travel',
-      submittedAt: '2024-01-15T16:45:00Z',
+      submittedAt: '2026-02-15T16:45:00Z',
       priority: 'low',
       currentStep: 'HR Approval',
     },
@@ -83,9 +83,8 @@ const Approvals: React.FC = () => {
         setPendingApprovals(approvals);
       } catch (error) {
         console.error('Error fetching pending approvals:', error);
-        // Fall back to sample data for development
-        console.warn('Using sample data for development');
-        setPendingApprovals(samplePendingApprovals as any);
+        // Set empty array on error
+        setPendingApprovals([]);
         // TODO: Add proper error notification
       } finally {
         setLoading(false);
@@ -105,8 +104,21 @@ const Approvals: React.FC = () => {
 
       console.log('Approved:', { stepId, comment });
 
-      // Remove from pending list
+      // Remove from pending list and refresh data
       setPendingApprovals(prev => prev.filter(approval => approval.stepId !== stepId));
+
+      // Refresh the list to get updated data from server
+      setTimeout(() => {
+        const fetchUpdated = async () => {
+          try {
+            const approvals = await approvalsService.getPendingApprovals();
+            setPendingApprovals(approvals);
+          } catch (error) {
+            console.error('Error refreshing approvals:', error);
+          }
+        };
+        fetchUpdated();
+      }, 1000);
 
       // TODO: Add success notification
       alert('Request approved successfully!');
@@ -127,8 +139,21 @@ const Approvals: React.FC = () => {
 
       console.log('Rejected:', { stepId, comment });
 
-      // Remove from pending list
+      // Remove from pending list and refresh data
       setPendingApprovals(prev => prev.filter(approval => approval.stepId !== stepId));
+
+      // Refresh the list to get updated data from server
+      setTimeout(() => {
+        const fetchUpdated = async () => {
+          try {
+            const approvals = await approvalsService.getPendingApprovals();
+            setPendingApprovals(approvals);
+          } catch (error) {
+            console.error('Error refreshing approvals:', error);
+          }
+        };
+        fetchUpdated();
+      }, 1000);
 
       // TODO: Add success notification
       alert('Request rejected successfully!');
