@@ -1,11 +1,47 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import VacationRequestForm from '@/components/VacationRequestForm';
 
 const Dashboard: React.FC = () => {
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const navigate = useNavigate();
+
+  const handleQuickRequest = () => {
+    setShowRequestForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowRequestForm(false);
+  };
+
+  const handleSubmitRequest = (formData: any) => {
+    console.log('Request submitted from dashboard:', formData);
+
+    if (formData.action === 'plan') {
+      alert('Request saved as draft!');
+    } else {
+      alert('Request submitted for approval!');
+    }
+
+    setShowRequestForm(false);
+  };
+
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Welcome to LeaveBoard - your vacation tracking hub</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Welcome to LeaveBoard - your vacation tracking hub</p>
+        </div>
+        <button
+          onClick={handleQuickRequest}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span>Quick Request</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -143,6 +179,14 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Vacation Request Form Modal */}
+      {showRequestForm && (
+        <VacationRequestForm
+          onClose={handleCloseForm}
+          onSubmit={handleSubmitRequest}
+        />
+      )}
     </div>
   );
 };
