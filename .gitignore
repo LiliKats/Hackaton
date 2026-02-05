@@ -41,6 +41,8 @@ logs/
 coverage/
 .nyc_output/
 
+nul
+
 # Misc
 .cache/
 tmp/
