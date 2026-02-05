@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LeaveRequest, LeaveType, LeaveStatus } from '../entities/leave-request.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
-import { WorkflowInstance } from '../../workflows/entities/workflow-instance.entity';
+import { WorkflowInstance, WorkflowStatus } from '../../workflows/entities/workflow-instance.entity';
 import { ApprovalStep } from '../../workflows/entities/approval-step.entity';
 
 @Injectable()
@@ -129,12 +129,11 @@ export class LeaveRequestsSeedService implements OnApplicationBootstrap {
 
       // Create workflow instance for this request
       const workflowInstance = this.workflowInstanceRepository.create({
-        id: `wf-instance-${i + 1}`,
         templateId: 'template-standard-approval',
         entityType: 'leave_request',
         entityId: savedRequest.id,
-        status: 'active',
-        currentStepIndex: 0,
+        status: WorkflowStatus.ACTIVE,
+        currentStepOrder: 1,
         context: {
           requestorId: requestData.user.id,
           requestorName: `${requestData.user.firstName} ${requestData.user.lastName}`,
