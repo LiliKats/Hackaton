@@ -1,0 +1,220 @@
+version: '3.8'
+
+services:
+  # Production Database
+  postgres-prod:
+    image: postgres:15-alpine
+    container_name: leaveboard-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - leaveboard-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and sessions
+  redis-prod:
+    image: redis:7-alpine
+    container_name: leaveboard-redis-prod
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - leaveboard-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend Application
+  backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: leaveboard-backend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres-prod
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis-prod
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      CORS_ORIGIN: ${FRONTEND_URL}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      WORKFLOW_SLA_HOURS: 48
+      MAX_FILE_SIZE: 10MB
+      RATE_LIMIT_TTL: 60000
+      RATE_LIMIT_LIMIT: 100
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./backend/uploads:/app/uploads
+    networks:
+      - leaveboard-network
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Application
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        REACT_APP_API_URL: ${BACKEND_URL}
+        REACT_APP_ENVIRONMENT: production
+    container_name: leaveboard-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontend/nginx/ssl:/etc/nginx/ssl:ro
+      - ./frontend/nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - leaveboard-network
+    depends_on:
+      - backend-prod
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: leaveboard-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - leaveboard-network
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: leaveboard-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - leaveboard-network
+    depends_on:
+      - prometheus
+
+  # Log Management - Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: leaveboard-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - leaveboard-network
+
+  # Log Management - Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: leaveboard-kibana
+    restart: unless-stopped
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - leaveboard-network
+    depends_on:
+      - elasticsearch
+
+  # Backup Service
+  backup:
+    image: postgres:15-alpine
+    container_name: leaveboard-backup
+    restart: "no"
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh
+    networks:
+      - leaveboard-network
+    depends_on:
+      - postgres-prod
+    profiles:
+      - backup
+    command: /backup.sh
+
+networks:
+  leaveboard-network:
+    driver: bridge
+
+volumes:
+  postgres_data_prod:
+    driver: local
+  redis_data_prod:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local

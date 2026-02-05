@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # Test Database
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: leaveboard-test-db
+    environment:
+      POSTGRES_DB: leaveboard_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d leaveboard_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Test Redis
+  redis-test:
+    image: redis:7-alpine
+    container_name: leaveboard-test-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Backend Test Environment
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    container_name: leaveboard-test-backend
+    environment:
+      NODE_ENV: test
+      PORT: 3001
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_NAME: leaveboard_test
+      DB_USERNAME: test_user
+      DB_PASSWORD: test_password
+      REDIS_HOST: redis-test
+      REDIS_PORT: 6379
+      JWT_SECRET: test_jwt_secret_for_testing_only
+      JWT_EXPIRES_IN: 1h
+      CORS_ORIGIN: http://localhost:3002
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/test:/app/test
+      - test_uploads:/app/uploads
+    networks:
+      - test-network
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    command: ["npm", "run", "start:test"]
+
+  # Frontend Test Environment
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    container_name: leaveboard-test-frontend
+    environment:
+      REACT_APP_API_URL: http://backend-test:3001
+      REACT_APP_ENVIRONMENT: test
+      CI: true
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/cypress:/app/cypress
+    networks:
+      - test-network
+    depends_on:
+      - backend-test
+
+  # Test Database Admin (for debugging)
+  pgadmin-test:
+    image: dpage/pgadmin4
+    container_name: leaveboard-test-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@test.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5051:80"
+    networks:
+      - test-network
+    profiles:
+      - debug
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  postgres_test_data:
+    driver: local
+  test_uploads:
+    driver: local
