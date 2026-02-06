@@ -205,9 +205,14 @@ const Calendar: React.FC = () => {
     });
   };
 
+  const handleYearSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const year = parseInt(event.target.value);
+    setSelectedDate(new Date(year, selectedDate.getMonth()));
+  };
+
   const handleMonthSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const [year, month] = event.target.value.split('-').map(Number);
-    setSelectedDate(new Date(year, month));
+    const month = parseInt(event.target.value);
+    setSelectedDate(new Date(selectedDate.getFullYear(), month));
   };
 
   const isWeekend = (date: Date) => {
@@ -218,6 +223,16 @@ const Calendar: React.FC = () => {
   const isToday = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
+  };
+
+  const isCurrentMonth = () => {
+    const today = new Date();
+    return selectedDate.getFullYear() === today.getFullYear() &&
+           selectedDate.getMonth() === today.getMonth();
+  };
+
+  const handleGoToCurrentMonth = () => {
+    setSelectedDate(new Date());
   };
 
   // Export handlers
@@ -317,18 +332,36 @@ const Calendar: React.FC = () => {
               </svg>
             </button>
 
-            <div className="min-w-48">
+            {/* Year Selector */}
+            <div className="min-w-24">
               <select
-                value={`${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
+                value={selectedDate.getFullYear()}
+                onChange={handleYearSelect}
+                className="block w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-center font-medium"
+              >
+                {Array.from({ length: 10 }, (_, i) => {
+                  const year = new Date().getFullYear() - 5 + i;
+                  return (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Month Selector */}
+            <div className="min-w-32">
+              <select
+                value={selectedDate.getMonth()}
                 onChange={handleMonthSelect}
                 className="block w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-center font-medium"
               >
-                {Array.from({ length: 24 }, (_, i) => {
-                  const date = new Date();
-                  date.setMonth(date.getMonth() - 12 + i);
+                {Array.from({ length: 12 }, (_, i) => {
+                  const date = new Date(selectedDate.getFullYear(), i, 1);
                   return (
-                    <option key={i} value={`${date.getFullYear()}-${date.getMonth()}`}>
-                      {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    <option key={i} value={i}>
+                      {date.toLocaleDateString('en-US', { month: 'long' })}
                     </option>
                   );
                 })}
@@ -343,6 +376,25 @@ const Calendar: React.FC = () => {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
+            </button>
+
+            {/* Current Month Button - always visible, disabled when viewing current month */}
+            <button
+              onClick={handleGoToCurrentMonth}
+              disabled={isCurrentMonth()}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors border ${
+                isCurrentMonth()
+                  ? 'text-gray-400 cursor-not-allowed border-gray-200 bg-gray-50'
+                  : 'text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 border-indigo-200 bg-indigo-50'
+              }`}
+              title={isCurrentMonth() ? 'Currently viewing this month' : 'Go to current month'}
+            >
+              <div className="flex items-center space-x-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Current</span>
+              </div>
             </button>
           </div>
         </div>
