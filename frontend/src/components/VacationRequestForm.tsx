@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LeaveType } from '@/types';
+import { calculateWorkingDays } from '@/utils/dateUtils';
 
 interface VacationRequestFormProps {
   onClose: () => void;
@@ -57,11 +58,7 @@ const VacationRequestForm: React.FC<VacationRequestFormProps> = ({ onClose, onSu
 
   const calculateDays = () => {
     if (formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
-      const timeDiff = end.getTime() - start.getTime();
-      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-      return daysDiff > 0 ? daysDiff : 0;
+      return calculateWorkingDays(formData.startDate, formData.endDate);
     }
     return 0;
   };
