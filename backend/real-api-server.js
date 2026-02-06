@@ -421,12 +421,28 @@ app.post('/api/workflows/steps/:stepId/approve', (req, res) => {
         db.get(`SELECT wi.entityId FROM workflow_instances wi
                 JOIN approval_steps ast ON wi.id = ast.workflowInstanceId
                 WHERE ast.id = ?`, [stepId], (err, workflow) => {
+          if (err) {
+            console.error('❌ Database error during approval workflow lookup:', err);
+            res.status(500).json({ error: 'Failed to update leave request status' });
+            return;
+          }
+
           if (workflow) {
             const status = decision === 'approve' ? 'approved' : 'rejected';
             db.run(`UPDATE leave_requests SET status = ?, managerNotes = ?
-                    WHERE id = ?`, [status, comments, workflow.entityId]);
+                    WHERE id = ?`, [status, comments, workflow.entityId], (updateErr) => {
+              if (updateErr) {
+                console.error('❌ Database error updating leave request:', updateErr);
+                res.status(500).json({ error: 'Failed to update leave request status' });
+                return;
+              }
+              console.log(`✅ Successfully ${decision}d leave request ${workflow.entityId}`);
+              res.json({ id: 'mock-workflow-instance', status: 'completed' });
+            });
+          } else {
+            console.warn(`⚠️ No workflow found for step ${stepId}`);
+            res.json({ id: 'mock-workflow-instance', status: 'completed' });
           }
-          res.json({ id: 'mock-workflow-instance', status: 'completed' });
         });
       }
     });
@@ -443,11 +459,27 @@ app.post('/api/workflows/steps/:stepId/approve', (req, res) => {
         db.get(`SELECT wi.entityId FROM workflow_instances wi
                 JOIN approval_steps ast ON wi.id = ast.workflowInstanceId
                 WHERE ast.id = ?`, [stepId], (err, workflow) => {
+          if (err) {
+            console.error('❌ Database error during rejection workflow lookup:', err);
+            res.status(500).json({ error: 'Failed to update leave request status' });
+            return;
+          }
+
           if (workflow) {
             db.run(`UPDATE leave_requests SET status = 'rejected', managerNotes = ?
-                    WHERE id = ?`, [comments, workflow.entityId]);
+                    WHERE id = ?`, [comments, workflow.entityId], (updateErr) => {
+              if (updateErr) {
+                console.error('❌ Database error updating leave request:', updateErr);
+                res.status(500).json({ error: 'Failed to update leave request status' });
+                return;
+              }
+              console.log(`❌ Successfully rejected leave request ${workflow.entityId}`);
+              res.json({ id: 'mock-workflow-instance', status: 'rejected' });
+            });
+          } else {
+            console.warn(`⚠️ No workflow found for step ${stepId}`);
+            res.json({ id: 'mock-workflow-instance', status: 'rejected' });
           }
-          res.json({ id: 'mock-workflow-instance', status: 'rejected' });
         });
       }
     });
