@@ -12,9 +12,26 @@ export interface PendingApproval {
   totalDays: number;
   reason: string;
   submittedAt: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
   currentStep: string;
   metadata?: Record<string, any>;
+}
+
+export interface LeaveRequestWithUser {
+  id: string;
+  userId: string;
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  managerNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  department: string;
 }
 
 export interface ApprovalDecision {
@@ -58,6 +75,20 @@ export const approvalsService = {
     } catch (error) {
       console.error('Error fetching pending approvals:', error);
       // Return empty array on error instead of throwing
+      return [];
+    }
+  },
+
+  /**
+   * Get all leave requests with user details, optionally filtered by status
+   */
+  async getAllLeaveRequests(status?: 'pending' | 'approved' | 'rejected' | 'cancelled'): Promise<LeaveRequestWithUser[]> {
+    try {
+      const url = status ? `/leave-requests/all?status=${status}` : '/leave-requests/all';
+      const response = await api.get<LeaveRequestWithUser[]>(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leave requests:', error);
       return [];
     }
   },

@@ -51,8 +51,7 @@ const Dashboard: React.FC = () => {
         startDate: formData.startDate,
         endDate: formData.endDate,
         totalDays: totalDays,
-        reason: formData.reason,
-        priority: 'medium' // Default priority
+        reason: formData.reason
       };
 
       console.log('Submitting to API:', requestData);

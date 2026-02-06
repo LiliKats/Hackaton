@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ApprovalRequestCard from '@/components/ApprovalRequestCard';
 import { UserRole } from '@/types';
-import { approvalsService, type PendingApproval } from '@/services/approvals.service';
+import { approvalsService, type PendingApproval, type LeaveRequestWithUser } from '@/services/approvals.service';
 
 // Using PendingApproval interface from approvals.service.ts
 
 const Approvals: React.FC = () => {
   const { user } = useAuth();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [allLeaveRequests, setAllLeaveRequests] = useState<LeaveRequestWithUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low'>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'priority' | 'type'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('pending');
 
   // Sample data - current month February 2026 (not used since we're using real backend API)
   /*
@@ -78,24 +79,27 @@ const Approvals: React.FC = () => {
   */
 
   useEffect(() => {
-    // Fetch pending approvals from API
-    const fetchPendingApprovals = async () => {
+    // Fetch both pending approvals and all leave requests
+    const fetchData = async () => {
       setLoading(true);
       try {
-        // Use real API call
+        // Fetch pending approvals for approval workflow
         const approvals = await approvalsService.getPendingApprovals();
         setPendingApprovals(approvals);
+
+        // Fetch all leave requests for filtering view
+        const allRequests = await approvalsService.getAllLeaveRequests();
+        setAllLeaveRequests(allRequests);
       } catch (error) {
-        console.error('Error fetching pending approvals:', error);
-        // Set empty array on error
+        console.error('Error fetching data:', error);
         setPendingApprovals([]);
-        // TODO: Add proper error notification
+        setAllLeaveRequests([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPendingApprovals();
+    fetchData();
   }, []);
 
   const handleApprove = async (stepId: string, comment: string) => {
@@ -232,16 +236,80 @@ const Approvals: React.FC = () => {
     }
   };
 
-  const filteredApprovals = pendingApprovals.filter(approval => {
-    if (filterStatus === 'all') return true;
-    return approval.priority === filterStatus;
-  });
+  const handleBulkReject = async () => {
+    if (selectedRequests.size === 0) return;
 
-  const sortedApprovals = [...filteredApprovals].sort((a, b) => {
+    setBulkApproving(true);
+    const comment = prompt('Enter rejection reason for all selected requests:');
+    if (!comment) {
+      setBulkApproving(false);
+      return;
+    }
+
+    try {
+      // Process all selected rejections
+      const rejectionPromises = Array.from(selectedRequests).map(stepId =>
+        approvalsService.processApproval(stepId, {
+          decision: 'reject',
+          comments: comment
+        })
+      );
+
+      await Promise.all(rejectionPromises);
+
+      // Remove rejected requests from pending list
+      setPendingApprovals(prev => prev.filter(approval => !selectedRequests.has(approval.stepId)));
+      setSelectedRequests(new Set());
+
+      // Refresh the list
+      setTimeout(async () => {
+        try {
+          const approvals = await approvalsService.getPendingApprovals();
+          setPendingApprovals(approvals);
+        } catch (error) {
+          console.error('Error refreshing approvals:', error);
+        }
+      }, 1000);
+
+      alert(`Successfully rejected ${selectedRequests.size} request(s)!`);
+    } catch (error) {
+      console.error('Error bulk rejecting requests:', error);
+      alert('Failed to reject some requests. Please try again.');
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
+  // Transform leave requests to approval format for display consistency
+  const transformedLeaveRequests = allLeaveRequests.map(req => ({
+    stepId: req.id, // Use request ID as stepId for non-pending items
+    workflowInstanceId: '', // Not applicable for completed requests
+    requestorName: `${req.firstName} ${req.lastName}`,
+    requestorEmail: req.email,
+    leaveType: req.type,
+    startDate: req.startDate,
+    endDate: req.endDate,
+    totalDays: req.totalDays,
+    reason: req.reason,
+    submittedAt: req.createdAt,
+    currentStep: req.status,
+    metadata: { status: req.status, managerNotes: req.managerNotes }
+  }));
+
+  // Filter data based on status
+  let displayData;
+  if (statusFilter === 'all') {
+    displayData = transformedLeaveRequests;
+  } else if (statusFilter === 'pending') {
+    // For pending, use the workflow approvals data which has the stepId for actions
+    displayData = pendingApprovals;
+  } else {
+    // Filter by specific status
+    displayData = transformedLeaveRequests.filter(req => req.metadata.status === statusFilter);
+  }
+
+  const sortedApprovals = [...displayData].sort((a, b) => {
     switch (sortBy) {
-      case 'priority':
-        const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
-        return priorityOrder[b.priority] - priorityOrder[a.priority];
       case 'type':
         return a.leaveType.localeCompare(b.leaveType);
       case 'date':
@@ -249,6 +317,9 @@ const Approvals: React.FC = () => {
         return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
     }
   });
+
+  // For compatibility with existing code
+  const filteredApprovals = displayData;
 
   // Check if user has approval permissions
   const canApprove = user?.role === UserRole.MANAGER || user?.role === UserRole.HR || user?.role === UserRole.ADMIN;
@@ -270,12 +341,12 @@ const Approvals: React.FC = () => {
       <div className="mb-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pending Approvals</h1>
-            <p className="text-gray-600">Review and process leave requests requiring your approval</p>
+            <h1 className="text-2xl font-bold text-gray-900">Leave Requests</h1>
+            <p className="text-gray-600">View and manage all leave requests</p>
           </div>
           <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-              {pendingApprovals.length} pending
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              {filteredApprovals.length} requests
             </span>
           </div>
         </div>
@@ -283,21 +354,68 @@ const Approvals: React.FC = () => {
 
       {/* Filters and Sorting */}
       <div className="bg-white rounded-lg shadow mb-6 p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">All Priorities</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+        {/* Status Filter Buttons */}
+        <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-3">Filter by Status</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                  statusFilter === 'all'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                All Statuses
+              </button>
+              <button
+                onClick={() => setStatusFilter('pending')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors flex items-center space-x-2 ${
+                  statusFilter === 'pending'
+                    ? 'bg-orange-50 border-orange-500 text-orange-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                <span>Pending</span>
+              </button>
+              <button
+                onClick={() => setStatusFilter('approved')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors flex items-center space-x-2 ${
+                  statusFilter === 'approved'
+                    ? 'bg-green-50 border-green-500 text-green-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span>Approved</span>
+              </button>
+              <button
+                onClick={() => setStatusFilter('rejected')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors flex items-center space-x-2 ${
+                  statusFilter === 'rejected'
+                    ? 'bg-red-50 border-red-500 text-red-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                <span>Rejected</span>
+              </button>
+              <button
+                onClick={() => setStatusFilter('cancelled')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors flex items-center space-x-2 ${
+                  statusFilter === 'cancelled'
+                    ? 'bg-gray-50 border-gray-500 text-gray-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="w-2 h-2 bg-gray-500 rounded-full"></span>
+                <span>Cancelled</span>
+              </button>
+            </div>
           </div>
+
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
             <select
@@ -306,15 +424,14 @@ const Approvals: React.FC = () => {
               className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="date">Submission Date</option>
-              <option value="priority">Priority</option>
               <option value="type">Leave Type</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Bulk Actions */}
-      {filteredApprovals.length > 0 && (
+      {/* Bulk Actions - Only for pending approvals */}
+      {statusFilter === 'pending' && filteredApprovals.length > 0 && (
         <div className="bg-white rounded-lg shadow mb-6 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -332,25 +449,47 @@ const Approvals: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               {selectedRequests.size > 0 && (
-                <button
-                  onClick={handleBulkApprove}
-                  disabled={bulkApproving}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {bulkApproving ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Approve Selected ({selectedRequests.size})
-                    </>
-                  )}
-                </button>
+                <>
+                  <button
+                    onClick={handleBulkApprove}
+                    disabled={bulkApproving}
+                    className="inline-flex items-center px-4 py-2 border border-green-600 text-sm font-medium rounded text-green-600 bg-transparent hover:bg-green-50 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {bulkApproving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Approve Selected ({selectedRequests.size})
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleBulkReject}
+                    disabled={bulkApproving}
+                    className="inline-flex items-center px-4 py-2 border border-red-600 text-sm font-medium rounded text-red-600 bg-transparent hover:bg-red-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {bulkApproving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Reject Selected ({selectedRequests.size})
+                      </>
+                    )}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -383,45 +522,13 @@ const Approvals: React.FC = () => {
               onApprove={handleApprove}
               onReject={handleReject}
               loading={loading}
-              isSelected={selectedRequests.has(approval.stepId)}
-              onSelectionChange={handleSelectionChange}
+              isSelected={statusFilter === 'pending' ? selectedRequests.has(approval.stepId) : false}
+              onSelectionChange={statusFilter === 'pending' ? handleSelectionChange : undefined}
             />
           ))}
         </div>
       )}
 
-      {/* Summary Stats */}
-      {pendingApprovals.length > 0 && (
-        <div className="mt-8 bg-gray-50 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Summary</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {pendingApprovals.filter(a => a.priority === 'urgent').length}
-              </div>
-              <div className="text-sm text-gray-500">Urgent</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                {pendingApprovals.filter(a => a.priority === 'high').length}
-              </div>
-              <div className="text-sm text-gray-500">High Priority</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {pendingApprovals.filter(a => a.priority === 'medium').length}
-              </div>
-              <div className="text-sm text-gray-500">Medium Priority</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {pendingApprovals.filter(a => a.priority === 'low').length}
-              </div>
-              <div className="text-sm text-gray-500">Low Priority</div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

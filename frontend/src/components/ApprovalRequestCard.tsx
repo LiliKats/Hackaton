@@ -12,7 +12,6 @@ interface ApprovalRequest {
   totalDays: number;
   reason: string;
   submittedAt: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
   currentStep: string;
   metadata?: Record<string, any>;
 }
@@ -69,20 +68,6 @@ const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
     }
   };
 
-  const getPriorityColor = () => {
-    switch (request.priority) {
-      case 'urgent':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'high':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low':
-        return 'bg-green-100 text-green-800 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -155,12 +140,21 @@ const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
                 </div>
               </div>
               <div className="flex flex-col items-end space-y-2">
-                <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor()}`}>
-                  {request.priority.toUpperCase()} PRIORITY
-                </span>
-                <span className="text-xs text-gray-500">
-                  Step: {request.currentStep}
-                </span>
+                {request.currentStep === 'approved' || request.currentStep === 'rejected' || request.currentStep === 'cancelled' ? (
+                  <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
+                    request.currentStep === 'approved'
+                      ? 'bg-green-100 text-green-800'
+                      : request.currentStep === 'rejected'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {request.currentStep.toUpperCase()}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-500">
+                    Step: {request.currentStep}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -191,30 +185,32 @@ const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons - Right Side */}
-          <div className="flex flex-col gap-2 ml-4 min-w-[120px]">
-            <button
-              onClick={() => handleActionClick('approve')}
-              disabled={loading || submitting}
-              className="bg-green-600 text-white py-1.5 px-3 text-sm rounded hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Approve</span>
-            </button>
+          {/* Action Buttons - Right Side - Only for pending requests */}
+          {request.currentStep !== 'approved' && request.currentStep !== 'rejected' && request.currentStep !== 'cancelled' && (
+            <div className="flex flex-col gap-2 ml-4 min-w-[120px]">
+              <button
+                onClick={() => handleActionClick('approve')}
+                disabled={loading || submitting}
+                className="bg-transparent border border-green-600 text-green-600 py-1.5 px-3 text-sm rounded hover:bg-green-50 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Approve</span>
+              </button>
 
-            <button
-              onClick={() => handleActionClick('reject')}
-              disabled={loading || submitting}
-              className="bg-red-600 text-white py-1.5 px-3 text-sm rounded hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>Reject</span>
-            </button>
-          </div>
+              <button
+                onClick={() => handleActionClick('reject')}
+                disabled={loading || submitting}
+                className="bg-transparent border border-red-600 text-red-600 py-1.5 px-3 text-sm rounded hover:bg-red-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Reject</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

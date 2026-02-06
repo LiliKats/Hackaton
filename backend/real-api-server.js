@@ -51,15 +51,26 @@ app.get('/api/users', (req, res) => {
 
 // Get all leave requests (route must come before /:id route to avoid conflict)
 app.get('/api/leave-requests/all', (req, res) => {
-  db.all(`SELECT lr.*, u.firstName, u.lastName, u.email, u.department
-          FROM leave_requests lr
-          JOIN users u ON lr.userId = u.id
-          ORDER BY lr.createdAt DESC`, (err, rows) => {
+  const { status } = req.query;
+  let query = `SELECT lr.*, u.firstName, u.lastName, u.email, u.department
+               FROM leave_requests lr
+               JOIN users u ON lr.userId = u.id`;
+  let params = [];
+
+  if (status) {
+    query += ` WHERE lr.status = ?`;
+    params.push(status);
+  }
+
+  query += ` ORDER BY lr.createdAt DESC`;
+
+  db.all(query, params, (err, rows) => {
     if (err) {
       console.error('Database error:', err);
       res.status(500).json({ error: err.message });
     } else {
-      console.log(`📅 Returning ${rows.length} leave requests for calendar from database`);
+      const statusFilter = status ? ` (status: ${status})` : '';
+      console.log(`📅 Returning ${rows.length} leave requests${statusFilter} from database`);
       res.json(rows);
     }
   });
@@ -95,7 +106,6 @@ app.get('/api/workflows/my-pending-approvals', (req, res) => {
       lr.totalDays,
       lr.reason,
       lr.createdAt as submittedAt,
-      lr.priority,
       ast.stepName as currentStep,
       lr.status
     FROM approval_steps ast
@@ -283,13 +293,13 @@ app.patch('/api/leave-requests/:id/cancel', (req, res) => {
 
 // Create new leave request
 app.post('/api/leave-requests', (req, res) => {
-  const { userId, type, startDate, endDate, totalDays, reason, priority = 'medium' } = req.body;
+  const { userId, type, startDate, endDate, totalDays, reason } = req.body;
   const id = 'req-' + Date.now();
 
   db.run(`
-    INSERT INTO leave_requests (id, userId, type, startDate, endDate, totalDays, reason, status, priority)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-  `, [id, userId, type, startDate, endDate, totalDays, reason, priority], function(err) {
+    INSERT INTO leave_requests (id, userId, type, startDate, endDate, totalDays, reason, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+  `, [id, userId, type, startDate, endDate, totalDays, reason], function(err) {
     if (err) {
       console.error('Database error:', err);
       res.status(500).json({ error: err.message });

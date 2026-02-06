@@ -82,8 +82,7 @@ const LeaveRequests: React.FC = () => {
         startDate: formData.startDate,
         endDate: formData.endDate,
         totalDays: totalDays,
-        reason: formData.reason,
-        priority: 'medium'
+        reason: formData.reason
       };
 
       console.log('Submitting to API:', requestData);
