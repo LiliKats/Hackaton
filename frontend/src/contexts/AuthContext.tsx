@@ -8,6 +8,9 @@ interface AuthContextType {
   register: (userData: any) => Promise<void>;
   logout: () => void;
   loginAsAdmin: () => void;
+  loginAsManager: () => void;
+  loginAsEmployee1: () => void;
+  loginAsEmployee2: () => void;
   refreshAdminLogin: () => void;
   isAuthenticated: boolean;
   loading: boolean;
@@ -15,7 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Development admin user - DO NOT USE IN PRODUCTION
+// Development test users - DO NOT USE IN PRODUCTION
 const DEV_ADMIN_USER: User = {
   id: 'admin-001',
   email: 'admin@dev.local',
@@ -27,6 +30,48 @@ const DEV_ADMIN_USER: User = {
   hireDate: '2024-01-01',
   annualLeaveDays: 25,
   usedLeaveDays: 0,
+  isActive: true,
+};
+
+const DEV_MANAGER_USER: User = {
+  id: 'manager-001',
+  email: 'manager@company.com',
+  firstName: 'Sarah',
+  lastName: 'Manager',
+  role: UserRole.MANAGER,
+  position: 'Engineering Manager',
+  department: 'Engineering',
+  hireDate: '2024-01-01',
+  annualLeaveDays: 28,
+  usedLeaveDays: 5,
+  isActive: true,
+};
+
+const DEV_EMPLOYEE1_USER: User = {
+  id: 'emp-001',
+  email: 'john.doe@company.com',
+  firstName: 'John',
+  lastName: 'Doe',
+  role: UserRole.EMPLOYEE,
+  position: 'Software Engineer',
+  department: 'Engineering',
+  hireDate: '2024-01-01',
+  annualLeaveDays: 25,
+  usedLeaveDays: 7,
+  isActive: true,
+};
+
+const DEV_EMPLOYEE2_USER: User = {
+  id: 'emp-002',
+  email: 'jane.smith@company.com',
+  firstName: 'Jane',
+  lastName: 'Smith',
+  role: UserRole.EMPLOYEE,
+  position: 'Product Manager',
+  department: 'Product',
+  hireDate: '2024-01-01',
+  annualLeaveDays: 25,
+  usedLeaveDays: 3,
   isActive: true,
 };
 
@@ -83,6 +128,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.warn('🔧 Development admin login - NOT FOR PRODUCTION!');
   };
 
+  const loginAsManager = () => {
+    // Quick manager login for development only
+    if (!import.meta.env.DEV) {
+      console.error('Manager bypass only available in development mode!');
+      return;
+    }
+
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+
+    localStorage.setItem('access_token', 'dev-manager-token');
+    localStorage.setItem('user', JSON.stringify(DEV_MANAGER_USER));
+    setUser(DEV_MANAGER_USER);
+    console.warn('🔧 Development manager login - NOT FOR PRODUCTION!');
+  };
+
+  const loginAsEmployee1 = () => {
+    // Quick employee login for development only
+    if (!import.meta.env.DEV) {
+      console.error('Employee bypass only available in development mode!');
+      return;
+    }
+
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+
+    localStorage.setItem('access_token', 'dev-employee1-token');
+    localStorage.setItem('user', JSON.stringify(DEV_EMPLOYEE1_USER));
+    setUser(DEV_EMPLOYEE1_USER);
+    console.warn('🔧 Development employee login (John Doe) - NOT FOR PRODUCTION!');
+  };
+
+  const loginAsEmployee2 = () => {
+    // Quick employee login for development only
+    if (!import.meta.env.DEV) {
+      console.error('Employee bypass only available in development mode!');
+      return;
+    }
+
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+
+    localStorage.setItem('access_token', 'dev-employee2-token');
+    localStorage.setItem('user', JSON.stringify(DEV_EMPLOYEE2_USER));
+    setUser(DEV_EMPLOYEE2_USER);
+    console.warn('🔧 Development employee login (Jane Smith) - NOT FOR PRODUCTION!');
+  };
+
   const register = async (userData: any) => {
     try {
       setLoading(true);
@@ -132,6 +225,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       register,
       logout,
       loginAsAdmin,
+      loginAsManager,
+      loginAsEmployee1,
+      loginAsEmployee2,
       refreshAdminLogin,
       isAuthenticated: !!user,
       loading

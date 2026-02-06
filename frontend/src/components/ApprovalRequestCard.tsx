@@ -22,13 +22,17 @@ interface ApprovalRequestCardProps {
   onApprove: (stepId: string, comment: string) => Promise<void>;
   onReject: (stepId: string, comment: string) => Promise<void>;
   loading?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (stepId: string, selected: boolean) => void;
 }
 
 const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
   request,
   onApprove,
   onReject,
-  loading = false
+  loading = false,
+  isSelected = false,
+  onSelectionChange
 }) => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
@@ -124,76 +128,93 @@ const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
   return (
     <>
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">{getLeaveTypeIcon()}</span>
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">{getLeaveTypeName()}</h3>
-              <p className="text-sm text-gray-500">
-                Requested by {request.requestorName}
+        <div className="flex items-start gap-4">
+          {/* Selection Checkbox */}
+          {onSelectionChange && (
+            <div className="flex items-center pt-1">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(e) => onSelectionChange(request.stepId, e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+          )}
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">{getLeaveTypeIcon()}</span>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">{getLeaveTypeName()}</h3>
+                  <p className="text-sm text-gray-500">
+                    Requested by {request.requestorName}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end space-y-2">
+                <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor()}`}>
+                  {request.priority.toUpperCase()} PRIORITY
+                </span>
+                <span className="text-xs text-gray-500">
+                  Step: {request.currentStep}
+                </span>
+              </div>
+            </div>
+
+            {/* Request Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">📅 Duration</h4>
+                <p className="text-sm text-gray-900">
+                  {formatDate(request.startDate)} - {formatDate(request.endDate)}
+                </p>
+                <p className="text-xs text-gray-500">{request.totalDays} day{request.totalDays !== 1 ? 's' : ''}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">📧 Contact</h4>
+                <p className="text-sm text-gray-900">{request.requestorEmail}</p>
+                <p className="text-xs text-gray-500">
+                  Submitted {new Date(request.submittedAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">📝 Reason</h4>
+              <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
+                {request.reason || 'No reason provided'}
               </p>
             </div>
           </div>
-          <div className="flex flex-col items-end space-y-2">
-            <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor()}`}>
-              {request.priority.toUpperCase()} PRIORITY
-            </span>
-            <span className="text-xs text-gray-500">
-              Step: {request.currentStep}
-            </span>
+
+          {/* Action Buttons - Right Side */}
+          <div className="flex flex-col gap-2 ml-4 min-w-[120px]">
+            <button
+              onClick={() => handleActionClick('approve')}
+              disabled={loading || submitting}
+              className="bg-green-600 text-white py-1.5 px-3 text-sm rounded hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Approve</span>
+            </button>
+
+            <button
+              onClick={() => handleActionClick('reject')}
+              disabled={loading || submitting}
+              className="bg-red-600 text-white py-1.5 px-3 text-sm rounded hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Reject</span>
+            </button>
           </div>
-        </div>
-
-        {/* Request Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">📅 Duration</h4>
-            <p className="text-sm text-gray-900">
-              {formatDate(request.startDate)} - {formatDate(request.endDate)}
-            </p>
-            <p className="text-xs text-gray-500">{request.totalDays} day{request.totalDays !== 1 ? 's' : ''}</p>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">📧 Contact</h4>
-            <p className="text-sm text-gray-900">{request.requestorEmail}</p>
-            <p className="text-xs text-gray-500">
-              Submitted {new Date(request.submittedAt).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-
-        {/* Reason */}
-        <div className="mb-6">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">📝 Reason</h4>
-          <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
-            {request.reason || 'No reason provided'}
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => handleActionClick('approve')}
-            disabled={loading || submitting}
-            className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Approve</span>
-          </button>
-
-          <button
-            onClick={() => handleActionClick('reject')}
-            disabled={loading || submitting}
-            className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>Reject</span>
-          </button>
         </div>
       </div>
 
@@ -246,11 +267,11 @@ const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={handleSubmitDecision}
                   disabled={!comment.trim() || submitting}
-                  className={`flex-1 text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                  className={`flex-1 text-white py-1.5 px-3 text-sm rounded focus:outline-none focus:ring-1 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
                     approvalAction === 'approve'
                       ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
                       : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
@@ -262,7 +283,7 @@ const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
                 <button
                   onClick={handleCancel}
                   disabled={submitting}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+                  className="flex-1 bg-gray-300 text-gray-700 py-1.5 px-3 text-sm rounded hover:bg-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500 focus:ring-offset-1 disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>

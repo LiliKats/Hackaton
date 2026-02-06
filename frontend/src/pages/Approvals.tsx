@@ -12,6 +12,8 @@ const Approvals: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'priority' | 'type'>('date');
+  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   // Sample data - current month February 2026 (not used since we're using real backend API)
   /*
@@ -166,6 +168,70 @@ const Approvals: React.FC = () => {
     }
   };
 
+  const handleSelectionChange = (stepId: string, selected: boolean) => {
+    setSelectedRequests(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(stepId);
+      } else {
+        newSet.delete(stepId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRequests(new Set(filteredApprovals.map(approval => approval.stepId)));
+    } else {
+      setSelectedRequests(new Set());
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedRequests.size === 0) return;
+
+    setBulkApproving(true);
+    const comment = prompt('Enter approval comment for all selected requests:');
+    if (!comment) {
+      setBulkApproving(false);
+      return;
+    }
+
+    try {
+      // Process all selected approvals
+      const approvalPromises = Array.from(selectedRequests).map(stepId =>
+        approvalsService.processApproval(stepId, {
+          decision: 'approve',
+          comments: comment
+        })
+      );
+
+      await Promise.all(approvalPromises);
+
+      // Remove approved requests from pending list
+      setPendingApprovals(prev => prev.filter(approval => !selectedRequests.has(approval.stepId)));
+      setSelectedRequests(new Set());
+
+      // Refresh the list
+      setTimeout(async () => {
+        try {
+          const approvals = await approvalsService.getPendingApprovals();
+          setPendingApprovals(approvals);
+        } catch (error) {
+          console.error('Error refreshing approvals:', error);
+        }
+      }, 1000);
+
+      alert(`Successfully approved ${selectedRequests.size} request(s)!`);
+    } catch (error) {
+      console.error('Error bulk approving requests:', error);
+      alert('Failed to approve some requests. Please try again.');
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
   const filteredApprovals = pendingApprovals.filter(approval => {
     if (filterStatus === 'all') return true;
     return approval.priority === filterStatus;
@@ -247,6 +313,50 @@ const Approvals: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      {filteredApprovals.length > 0 && (
+        <div className="bg-white rounded-lg shadow mb-6 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={selectedRequests.size === filteredApprovals.length && filteredApprovals.length > 0}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-700">
+                  Select All ({selectedRequests.size} of {filteredApprovals.length} selected)
+                </label>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {selectedRequests.size > 0 && (
+                <button
+                  onClick={handleBulkApprove}
+                  disabled={bulkApproving}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {bulkApproving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Approving...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Approve Selected ({selectedRequests.size})
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Approvals List */}
       {loading ? (
         <div className="text-center py-12">
@@ -273,6 +383,8 @@ const Approvals: React.FC = () => {
               onApprove={handleApprove}
               onReject={handleReject}
               loading={loading}
+              isSelected={selectedRequests.has(approval.stepId)}
+              onSelectionChange={handleSelectionChange}
             />
           ))}
         </div>

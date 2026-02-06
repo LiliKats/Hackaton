@@ -6,7 +6,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, loginAsAdmin, loading, isAuthenticated } = useAuth();
+  const { login, loginAsAdmin, loginAsManager, loginAsEmployee1, loginAsEmployee2, loading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,22 +96,45 @@ const Login: React.FC = () => {
           </div>
         </form>
 
-        {/* Development Admin Login - Only show in development mode */}
+        {/* Development Test Login Buttons - Only show in development mode */}
         {import.meta.env.DEV && (
           <div className="mt-6 border-t border-gray-200 pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-3">
-                🔧 Development Tools
+                🔧 Quick Test Logins
               </p>
-              <button
-                type="button"
-                onClick={handleAdminLogin}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              >
-                Login as Admin (Dev Mode)
-              </button>
-              <p className="mt-2 text-xs text-gray-500">
-                Username: admin@dev.local | Password: admin
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={handleAdminLogin}
+                  className="flex justify-center py-1.5 px-3 border border-blue-300 text-xs font-medium rounded bg-blue-50 text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  👤 Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={loginAsManager}
+                  className="flex justify-center py-1.5 px-3 border border-green-300 text-xs font-medium rounded bg-green-50 text-green-700 hover:bg-green-100 focus:outline-none focus:ring-1 focus:ring-green-500"
+                >
+                  👔 Manager
+                </button>
+                <button
+                  type="button"
+                  onClick={loginAsEmployee1}
+                  className="flex justify-center py-1.5 px-3 border border-orange-300 text-xs font-medium rounded bg-orange-50 text-orange-700 hover:bg-orange-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                >
+                  👨‍💻 John Doe
+                </button>
+                <button
+                  type="button"
+                  onClick={loginAsEmployee2}
+                  className="flex justify-center py-1.5 px-3 border border-purple-300 text-xs font-medium rounded bg-purple-50 text-purple-700 hover:bg-purple-100 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  👩‍💼 Jane Smith
+                </button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Quick login buttons for testing different user roles
               </p>
             </div>
           </div>

@@ -31,7 +31,7 @@ logs/
 *.log
 
 # Database
-*.sqlite
+#*.sqlite
 *.db
 
 # Docker
