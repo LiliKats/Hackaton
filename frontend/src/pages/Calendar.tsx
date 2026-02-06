@@ -23,31 +23,93 @@ interface LeaveEntry {
   submittedAt?: string;
 }
 
+interface BackendLeaveData {
+  id: string;
+  userId: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  reason: string;
+  status: string;
+  priority: string;
+  managerNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  department: string;
+}
+
 const Calendar: React.FC = () => {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Team members - we'll derive this from leave data
-  const teamMembers: Employee[] = [
-    { id: 'current-user', name: `${user?.firstName || 'You'} ${user?.lastName || '(Manager)'}`, role: 'Manager' },
-    { id: 'john-doe', name: 'John Doe', role: 'Software Engineer' },
-    { id: 'jane-smith', name: 'Jane Smith', role: 'Product Manager' },
-    { id: 'mike-johnson', name: 'Mike Johnson', role: 'Designer' },
-    { id: 'sarah-wilson', name: 'Sarah Wilson', role: 'QA Engineer' },
-    { id: 'alex-chen', name: 'Alex Chen', role: 'DevOps Engineer' },
-    { id: 'emily-rodriguez', name: 'Emily Rodriguez', role: 'Frontend Developer' },
-  ];
+  // Derive team members from leave data
+  const teamMembers: Employee[] = useMemo(() => {
+    const uniqueEmployees = new Map<string, Employee>();
+
+    // Add current user if not in leave data
+    if (user) {
+      uniqueEmployees.set(user.id, {
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        role: user.role || 'Employee'
+      });
+    }
+
+    // Extract unique employees from leave entries
+    leaveEntries.forEach(entry => {
+      if (!uniqueEmployees.has(entry.employeeId)) {
+        uniqueEmployees.set(entry.employeeId, {
+          id: entry.employeeId,
+          name: entry.employeeName,
+          role: 'Employee' // Default role, could be enhanced by fetching user details
+        });
+      }
+    });
+
+    return Array.from(uniqueEmployees.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [leaveEntries, user]);
+
+  // Helper function to convert backend data to calendar entries
+  const convertBackendDataToCalendarEntries = (backendData: BackendLeaveData[]): LeaveEntry[] => {
+    const entries: LeaveEntry[] = [];
+
+    backendData.forEach(leave => {
+      const startDate = new Date(leave.startDate);
+      const endDate = new Date(leave.endDate);
+
+      // Generate an entry for each day in the leave period
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        entries.push({
+          employeeId: leave.userId,
+          employeeName: `${leave.firstName} ${leave.lastName}`,
+          employeeEmail: leave.email,
+          date: formatDate(new Date(d)),
+          leaveType: leave.type.toUpperCase(),
+          status: leave.status.toUpperCase(),
+          reason: leave.reason,
+          submittedAt: leave.createdAt,
+        });
+      }
+    });
+
+    return entries;
+  };
 
   // Fetch leave data from backend API
   useEffect(() => {
     const fetchLeaveData = async () => {
       setLoading(true);
       try {
-        const response = await api.get<LeaveEntry[]>('/leave-requests/all');
-        setLeaveEntries(response.data);
-        console.log('📅 Loaded leave data for calendar:', response.data.length, 'entries');
+        const response = await api.get<BackendLeaveData[]>('/leave-requests/all');
+        const calendarEntries = convertBackendDataToCalendarEntries(response.data);
+        setLeaveEntries(calendarEntries);
+        console.log('📅 Loaded leave data for calendar:', response.data.length, 'leave requests,', calendarEntries.length, 'calendar entries');
       } catch (error) {
         console.error('Error fetching leave data for calendar:', error);
         setLeaveEntries([]);
