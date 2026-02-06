@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 // import { LeaveType } from '@/types';
 import api from '@/services/api';
 import { exportCalendarAsICS, exportCalendarAsCSV } from '@/utils/calendarExport';
+import { generateAvatarUrl, hasProfilePicture } from '@/utils/profilePictures';
 
 interface Employee {
   id: string;
@@ -49,35 +50,73 @@ const Calendar: React.FC = () => {
   const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [backendLeaveData, setBackendLeaveData] = useState<BackendLeaveData[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Derive team members from leave data
+  // Avatar generation is now handled by the shared utility
+
+  // Derive team members from all users, not just those with leave data
   const teamMembers: Employee[] = useMemo(() => {
     const uniqueEmployees = new Map<string, Employee>();
 
-    // Add current user if not in leave data
-    if (user) {
+    // Add all users from the backend
+    allUsers.forEach(backendUser => {
+      const userName = `${backendUser.firstName} ${backendUser.lastName}`;
+      uniqueEmployees.set(backendUser.id, {
+        id: backendUser.id,
+        name: userName,
+        role: backendUser.role || 'Employee',
+        avatar: backendUser.profilePictureUrl || generateAvatarUrl(userName)
+      });
+    });
+
+    // Also add current user if not already included
+    if (user && !uniqueEmployees.has(user.id)) {
+      const userName = `${user.firstName} ${user.lastName}`;
       uniqueEmployees.set(user.id, {
         id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        role: user.role || 'Employee'
+        name: userName,
+        role: user.role || 'Employee',
+        avatar: generateAvatarUrl(userName)
       });
     }
 
-    // Extract unique employees from leave entries
+    // Also extract employees from leave entries (in case they're not in the users list)
     leaveEntries.forEach(entry => {
       if (!uniqueEmployees.has(entry.employeeId)) {
         uniqueEmployees.set(entry.employeeId, {
           id: entry.employeeId,
           name: entry.employeeName,
-          role: 'Employee' // Default role, could be enhanced by fetching user details
+          role: 'Employee',
+          avatar: generateAvatarUrl(entry.employeeName)
         });
       }
     });
 
-    return Array.from(uniqueEmployees.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [leaveEntries, user]);
+    const members = Array.from(uniqueEmployees.values()).sort((a, b) => a.name.localeCompare(b.name));
+    console.log('🔄 Calendar team members generation:');
+    console.log('📊 All users from backend:', allUsers.length, allUsers);
+    console.log('📊 Leave entries count:', leaveEntries.length);
+    console.log('👥 Team members generated:', members.length, 'members');
+
+    const membersWithPictureType = members.map(m => {
+      // Find the corresponding backend user to check if they have a real profile picture
+      const backendUser = allUsers.find(user => `${user.firstName} ${user.lastName}` === m.name);
+      return {
+        id: m.id,
+        name: m.name,
+        role: m.role,
+        hasAvatar: !!m.avatar,
+        pictureType: (backendUser?.hasProfilePicture || hasProfilePicture(m.name)) ? 'Real Photo' : 'Generated Avatar',
+        avatar: m.avatar
+      };
+    });
+
+    console.log('👥 Team members with profile pictures:', membersWithPictureType);
+    console.log(`📸 Profile pictures breakdown: ${membersWithPictureType.filter(m => m.pictureType === 'Real Photo').length} real photos, ${membersWithPictureType.filter(m => m.pictureType === 'Generated Avatar').length} generated avatars`);
+    return members;
+  }, [allUsers, leaveEntries, user]);
 
   // Helper function to convert backend data to calendar entries
   const convertBackendDataToCalendarEntries = (backendData: BackendLeaveData[]): LeaveEntry[] => {
@@ -105,29 +144,36 @@ const Calendar: React.FC = () => {
     return entries;
   };
 
-  // Fetch leave data from backend API
+  // Fetch leave data and users from backend API
   useEffect(() => {
-    const fetchLeaveData = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const response = await api.get<BackendLeaveData[]>('/leave-requests/all');
-        setBackendLeaveData(response.data); // Store original backend data for export
-        const calendarEntries = convertBackendDataToCalendarEntries(response.data);
+        // Fetch leave data
+        const leaveResponse = await api.get<BackendLeaveData[]>('/leave-requests/all');
+        setBackendLeaveData(leaveResponse.data);
+        const calendarEntries = convertBackendDataToCalendarEntries(leaveResponse.data);
         setLeaveEntries(calendarEntries);
-        console.log('📅 Loaded leave data for calendar:', response.data.length, 'leave requests,', calendarEntries.length, 'calendar entries');
+        console.log('📅 Loaded leave data for calendar:', leaveResponse.data.length, 'leave requests,', calendarEntries.length, 'calendar entries');
+
+        // Fetch all users
+        const usersResponse = await api.get('/users');
+        setAllUsers(usersResponse.data);
+        console.log('👥 Loaded users for calendar:', usersResponse.data.length, 'users');
       } catch (error) {
-        console.error('Error fetching leave data for calendar:', error);
+        console.error('Error fetching data for calendar:', error);
         setLeaveEntries([]);
         setBackendLeaveData([]);
+        setAllUsers([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLeaveData();
+    fetchData();
 
     // Refresh every 30 seconds to show new approvals
-    const interval = setInterval(fetchLeaveData, 30000);
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -260,9 +306,9 @@ const Calendar: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
             <p className="text-gray-600">
-              View team leave schedule and plan your time off
+              View team leave schedule with profile pictures and plan your time off
               {loading && <span className="ml-2 text-indigo-600">Loading...</span>}
-              {!loading && <span className="ml-2 text-gray-500">({backendLeaveData.length} leave requests)</span>}
+              {!loading && <span className="ml-2 text-gray-500">({backendLeaveData.length} leave requests, {teamMembers.length} team members)</span>}
             </p>
           </div>
 
@@ -433,12 +479,41 @@ const Calendar: React.FC = () => {
                 <tr key={employee.id} className="hover:bg-gray-50">
                   <td className="sticky left-0 bg-white px-6 py-4 whitespace-nowrap border-r border-gray-200">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8">
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-indigo-600">
-                            {employee.name.split(' ').map(n => n[0]).join('')}
-                          </span>
-                        </div>
+                      <div
+                        className="flex-shrink-0 h-8 w-8 cursor-pointer transform hover:scale-110 transition-transform duration-200"
+                        title={`${employee.name} - ${employee.role}`}
+                      >
+                        {employee.avatar ? (
+                          <img
+                            className="h-8 w-8 rounded-full border-2 border-gray-200 shadow-sm object-cover hover:border-indigo-300 transition-colors duration-200"
+                            src={employee.avatar}
+                            alt={employee.name}
+                            onLoad={(e) => {
+                              console.log(`✅ Profile picture loaded for ${employee.name}`);
+                            }}
+                            onError={(e) => {
+                              console.log(`❌ Profile picture failed to load for ${employee.name}: ${employee.avatar}`);
+                              // Fallback to initials if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              const container = target.parentElement;
+                              if (container) {
+                                container.innerHTML = `
+                                  <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center border-2 border-gray-200 hover:border-indigo-300 transition-colors duration-200">
+                                    <span class="text-sm font-medium text-indigo-600">
+                                      ${employee.name.split(' ').map(n => n[0]).join('')}
+                                    </span>
+                                  </div>
+                                `;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center border-2 border-gray-200 hover:border-indigo-300 transition-colors duration-200">
+                            <span className="text-sm font-medium text-indigo-600">
+                              {employee.name.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="ml-3">
                         <div className="text-sm font-medium text-gray-900">{employee.name}</div>
