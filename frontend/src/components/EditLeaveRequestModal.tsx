@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LeaveType, LeaveRequest } from '@/types';
+import { calculateWorkingDays } from '@/utils/dateUtils';
 
 interface EditLeaveRequestModalProps {
   request: LeaveRequest;
@@ -53,11 +54,8 @@ const EditLeaveRequestModal: React.FC<EditLeaveRequestModalProps> = ({
       return;
     }
 
-    // Calculate total days
-    const startDate = new Date(formData.startDate);
-    const endDate = new Date(formData.endDate);
-    const timeDiff = endDate.getTime() - startDate.getTime();
-    const totalDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+    // Calculate working days (excluding weekends)
+    const totalDays = calculateWorkingDays(formData.startDate, formData.endDate);
 
     onSubmit(request.id, {
       ...formData,
@@ -210,7 +208,7 @@ const EditLeaveRequestModal: React.FC<EditLeaveRequestModalProps> = ({
               disabled={isSubmitting}
               className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
             >
-              Cancel
+              Close
             </button>
             <button
               type="submit"

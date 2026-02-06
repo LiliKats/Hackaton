@@ -281,7 +281,7 @@ const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
                   disabled={submitting}
                   className="flex-1 bg-gray-300 text-gray-700 py-1.5 px-3 text-sm rounded hover:bg-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500 focus:ring-offset-1 disabled:opacity-50 transition-colors"
                 >
-                  Cancel
+                  Close
                 </button>
               </div>
             </div>

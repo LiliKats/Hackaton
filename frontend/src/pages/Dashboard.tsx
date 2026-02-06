@@ -4,6 +4,7 @@ import VacationRequestForm from '@/components/VacationRequestForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { leaveRequestsService } from '@/services/leave-requests.service';
 import { LeaveType } from '@/types';
+import { calculateWorkingDays } from '@/utils/dateUtils';
 
 const Dashboard: React.FC = () => {
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -38,11 +39,8 @@ const Dashboard: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      // Calculate total days
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(formData.endDate);
-      const timeDiff = endDate.getTime() - startDate.getTime();
-      const totalDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+      // Calculate working days (excluding weekends)
+      const totalDays = calculateWorkingDays(formData.startDate, formData.endDate);
 
       // Prepare data for API call
       const requestData = {

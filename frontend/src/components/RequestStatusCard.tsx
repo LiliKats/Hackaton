@@ -30,12 +30,14 @@ const RequestStatusCard: React.FC<RequestStatusCardProps> = ({
 }) => {
   const getStatusColor = () => {
     switch (status) {
+      case LeaveStatus.DRAFT:
+        return 'bg-gray-100 text-gray-700 border-gray-300';
+      case LeaveStatus.PENDING:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case LeaveStatus.APPROVED:
         return 'bg-green-100 text-green-800 border-green-200';
       case LeaveStatus.REJECTED:
         return 'bg-red-100 text-red-800 border-red-200';
-      case LeaveStatus.PENDING:
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case LeaveStatus.CANCELLED:
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
@@ -81,7 +83,7 @@ const RequestStatusCard: React.FC<RequestStatusCardProps> = ({
     });
   };
 
-  const canEdit = status === LeaveStatus.PENDING;
+  const canEdit = status === LeaveStatus.DRAFT || status === LeaveStatus.PENDING;
   const canCancel = status === LeaveStatus.PENDING || status === LeaveStatus.APPROVED;
 
   return (
