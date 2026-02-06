@@ -8,7 +8,7 @@ const PORT = 3001;
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3003'],
   credentials: true
 }));
 app.use(express.json());
@@ -310,6 +310,57 @@ app.post('/api/leave-requests', (req, res) => {
   });
 });
 
+// Update leave request
+app.put('/api/leave-requests/:id', (req, res) => {
+  const { id } = req.params;
+  const { type, startDate, endDate, totalDays, reason, priority = 'medium' } = req.body;
+
+  // Only allow updating pending requests
+  db.get(`SELECT status FROM leave_requests WHERE id = ?`, [id], (err, request) => {
+    if (err) {
+      console.error('Database error:', err);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+
+    if (!request) {
+      res.status(404).json({ error: 'Leave request not found' });
+      return;
+    }
+
+    if (request.status !== 'pending') {
+      res.status(400).json({ error: 'Can only edit pending requests' });
+      return;
+    }
+
+    // Update the request
+    db.run(`
+      UPDATE leave_requests
+      SET type = ?, startDate = ?, endDate = ?, totalDays = ?, reason = ?, priority = ?, updatedAt = datetime('now')
+      WHERE id = ?
+    `, [type, startDate, endDate, totalDays, reason, priority, id], function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        res.status(500).json({ error: err.message });
+      } else if (this.changes > 0) {
+        console.log(`✅ Updated leave request: ${id}`);
+
+        // Return the updated request with user info
+        db.get(`SELECT lr.*, u.firstName, u.lastName, u.email, u.department FROM leave_requests lr
+                JOIN users u ON lr.userId = u.id WHERE lr.id = ?`, [id], (err, row) => {
+          if (err) {
+            res.status(500).json({ error: err.message });
+          } else {
+            res.json(row);
+          }
+        });
+      } else {
+        res.status(404).json({ error: 'Leave request not found' });
+      }
+    });
+  });
+});
+
 // Process workflow approval decision
 app.post('/api/workflows/steps/:stepId/approve', (req, res) => {
   const { stepId } = req.params;
@@ -496,6 +547,7 @@ app.get('/api/docs', (req, res) => {
       'GET /api/leave-requests/user/:userId': 'Get user leave requests (frontend route)',
       'GET /api/leave-requests/:id': 'Get single leave request by ID',
       'POST /api/leave-requests': 'Create new leave request',
+      'PUT /api/leave-requests/:id': 'Update leave request (pending only)',
       'PATCH /api/leave-requests/:id/approve': 'Approve leave request',
       'PATCH /api/leave-requests/:id/reject': 'Reject leave request',
       'PATCH /api/leave-requests/:id/cancel': 'Cancel leave request',

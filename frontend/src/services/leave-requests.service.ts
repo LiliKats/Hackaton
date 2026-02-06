@@ -37,6 +37,11 @@ export const leaveRequestsService = {
     return response.data;
   },
 
+  async update(id: string, data: Partial<LeaveRequest>): Promise<LeaveRequest> {
+    const response = await api.put<LeaveRequest>(`/leave-requests/${id}`, data);
+    return response.data;
+  },
+
   async cancel(id: string): Promise<LeaveRequest> {
     const response = await api.patch<LeaveRequest>(`/leave-requests/${id}/cancel`, {});
     return response.data;
