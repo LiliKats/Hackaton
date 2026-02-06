@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LeaveType, LeaveRequest } from '@/types';
+import { calculateWorkingDays } from '@/utils/dateUtils';
 
 interface EditLeaveRequestModalProps {
   request: LeaveRequest;
@@ -53,11 +54,8 @@ const EditLeaveRequestModal: React.FC<EditLeaveRequestModalProps> = ({
       return;
     }
 
-    // Calculate total days
-    const startDate = new Date(formData.startDate);
-    const endDate = new Date(formData.endDate);
-    const timeDiff = endDate.getTime() - startDate.getTime();
-    const totalDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+    // Calculate working days (excluding weekends)
+    const totalDays = calculateWorkingDays(formData.startDate, formData.endDate);
 
     onSubmit(request.id, {
       ...formData,

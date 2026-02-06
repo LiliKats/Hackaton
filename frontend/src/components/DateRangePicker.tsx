@@ -1,4 +1,5 @@
 import React from 'react';
+import { calculateWorkingDays } from '@/utils/dateUtils';
 
 interface DateRangePickerProps {
   startDate: string;
@@ -108,10 +109,10 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             <div>
               <span className="font-medium text-blue-800">Duration:</span>
               <p className="text-blue-700">
-                {calculateDaysBetween()} total days
+                {calculateWorkingDays(startDate, endDate)} working days
                 <br />
                 <span className="text-xs text-blue-600">
-                  ({getWeekdayCount()} business days)
+                  ({calculateDaysBetween()} total days)
                 </span>
               </p>
             </div>
