@@ -234,7 +234,6 @@ const Calendar: React.FC = () => {
   const handleGoToCurrentMonth = () => {
     setSelectedDate(new Date());
   };
-
   // Export handlers
   const handleExport = (format: 'ics' | 'csv') => {
     if (backendLeaveData.length === 0) {
