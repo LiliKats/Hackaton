@@ -14,6 +14,7 @@ const LeaveRequests: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCancelled, setShowCancelled] = useState(true);
+  const [showDrafts, setShowDrafts] = useState(true);
   const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
   const [viewingRequest, setViewingRequest] = useState<LeaveRequest | null>(null);
   const [cancellingRequest, setCancellingRequest] = useState<LeaveRequest | null>(null);
@@ -66,9 +67,41 @@ const LeaveRequests: React.FC = () => {
     }
 
     if (formData.action === 'plan') {
-      // For now, just show alert for "plan" mode since it's a draft
-      alert('Request saved as draft!');
-      setShowRequestForm(false);
+      // Handle draft submission
+      try {
+        setIsSubmitting(true);
+
+        // Calculate total days
+        const startDate = new Date(formData.startDate);
+        const endDate = new Date(formData.endDate);
+        const timeDiff = endDate.getTime() - startDate.getTime();
+        const totalDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+
+        // Prepare data for API call with draft status
+        const draftData = {
+          userId: user.id,
+          type: formData.type as LeaveType,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          totalDays: totalDays,
+          reason: formData.reason,
+          status: 'draft' // Set status as draft
+        };
+
+        console.log('Saving draft:', draftData);
+        await leaveRequestsService.create(draftData);
+
+        alert('Request saved as draft!');
+        setShowRequestForm(false);
+
+        // Refresh the requests list
+        await fetchRequests();
+      } catch (error) {
+        console.error('Error saving draft:', error);
+        alert('Failed to save draft. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -240,18 +273,33 @@ const LeaveRequests: React.FC = () => {
           <div className="grid gap-6">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-medium text-gray-900">Your Requests</h2>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={showCancelled}
-                  onChange={(e) => setShowCancelled(e.target.checked)}
-                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                />
-                <span className="text-sm text-gray-600">Show cancelled requests</span>
-              </label>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={showDrafts}
+                    onChange={(e) => setShowDrafts(e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="text-sm text-gray-600">Show drafts</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={showCancelled}
+                    onChange={(e) => setShowCancelled(e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="text-sm text-gray-600">Show cancelled</span>
+                </label>
+              </div>
             </div>
             {requests
-              .filter((request: any) => showCancelled || request.status !== 'cancelled')
+              .filter((request: any) => {
+                if (request.status === 'cancelled' && !showCancelled) return false;
+                if (request.status === 'draft' && !showDrafts) return false;
+                return true;
+              })
               .map((request: any) => (
               <RequestStatusCard
                 key={request.id}
