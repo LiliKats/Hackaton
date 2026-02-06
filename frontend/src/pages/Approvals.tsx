@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import ApprovalRequestCard from '@/components/ApprovalRequestCard';
 import { UserRole } from '@/types';
@@ -46,6 +47,7 @@ const isDateInRange = (dateStr: string, start: Date, end: Date) => {
 
 const Approvals: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [allLeaveRequests, setAllLeaveRequests] = useState<LeaveRequestWithUser[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -53,7 +55,11 @@ const Approvals: React.FC = () => {
   const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [bulkApproving, setBulkApproving] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('pending');
+
+  // Get initial filter from URL parameters, default to 'pending'
+  const initialFilter = searchParams.get('filter') as 'all' | 'pending' | 'approved' | 'rejected' | 'cancelled' || 'pending';
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>(initialFilter);
+
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [dateFilter, setDateFilter] = useState<'all' | 'current' | 'previous' | 'next' | 'custom'>('all');
