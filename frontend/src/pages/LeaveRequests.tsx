@@ -181,19 +181,6 @@ const LeaveRequests: React.FC = () => {
     }
   };
 
-  const handleCancelFromModal = async (id: string) => {
-    try {
-      await leaveRequestsService.cancel(id);
-      alert('Request cancelled successfully!');
-      setViewingRequest(null);
-
-      // Refresh the requests list
-      await fetchRequests();
-    } catch (error) {
-      console.error('Error cancelling request:', error);
-      alert('Failed to cancel request. Please try again.');
-    }
-  };
 
   return (
     <div className="p-6">
