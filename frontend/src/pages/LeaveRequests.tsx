@@ -3,6 +3,7 @@ import VacationRequestForm from '@/components/VacationRequestForm';
 import RequestStatusCard from '@/components/RequestStatusCard';
 import EditLeaveRequestModal from '@/components/EditLeaveRequestModal';
 import ViewLeaveRequestModal from '@/components/ViewLeaveRequestModal';
+import CancelConfirmationModal from '@/components/CancelConfirmationModal';
 import { LeaveStatus, LeaveType, LeaveRequest } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { leaveRequestsService } from '@/services/leave-requests.service';
@@ -15,6 +16,8 @@ const LeaveRequests: React.FC = () => {
   const [showCancelled, setShowCancelled] = useState(true);
   const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
   const [viewingRequest, setViewingRequest] = useState<LeaveRequest | null>(null);
+  const [cancellingRequest, setCancellingRequest] = useState<LeaveRequest | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const { user, refreshAdminLogin } = useAuth();
 
   // Fetch leave requests on component mount
@@ -113,21 +116,31 @@ const LeaveRequests: React.FC = () => {
     }
   };
 
-  const handleCancelRequest = async (id: string) => {
+  const handleCancelRequest = (id: string) => {
     console.log('Cancel request:', id);
+    const request = requests.find(r => r.id === id);
+    if (request) {
+      setCancellingRequest(request);
+    }
+  };
 
-    const confirmed = window.confirm('Are you sure you want to cancel this request?');
-    if (!confirmed) return;
+  const handleConfirmCancel = async () => {
+    if (!cancellingRequest) return;
 
     try {
-      await leaveRequestsService.cancel(id);
+      setIsCancelling(true);
+      await leaveRequestsService.cancel(cancellingRequest.id);
       alert('Request cancelled successfully!');
+      setCancellingRequest(null);
+      setViewingRequest(null);
 
-      // Refresh the requests list to show updated status
+      // Refresh the requests list
       await fetchRequests();
     } catch (error) {
       console.error('Error cancelling request:', error);
       alert('Failed to cancel request. Please try again.');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -136,6 +149,14 @@ const LeaveRequests: React.FC = () => {
     const request = requests.find(r => r.id === id);
     if (request) {
       setViewingRequest(request);
+    }
+  };
+
+  const handleCancelFromModal = (id: string) => {
+    const request = requests.find(r => r.id === id);
+    if (request) {
+      setViewingRequest(null);
+      setCancellingRequest(request);
     }
   };
 
@@ -160,19 +181,6 @@ const LeaveRequests: React.FC = () => {
     }
   };
 
-  const handleCancelFromModal = async (id: string) => {
-    try {
-      await leaveRequestsService.cancel(id);
-      alert('Request cancelled successfully!');
-      setViewingRequest(null);
-
-      // Refresh the requests list
-      await fetchRequests();
-    } catch (error) {
-      console.error('Error cancelling request:', error);
-      alert('Failed to cancel request. Please try again.');
-    }
-  };
 
   return (
     <div className="p-6">
@@ -292,6 +300,16 @@ const LeaveRequests: React.FC = () => {
             setEditingRequest(viewingRequest);
           }}
           onCancel={() => handleCancelFromModal(viewingRequest.id)}
+        />
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancellingRequest && (
+        <CancelConfirmationModal
+          request={cancellingRequest}
+          onConfirm={handleConfirmCancel}
+          onCancel={() => setCancellingRequest(null)}
+          isLoading={isCancelling}
         />
       )}
     </div>
