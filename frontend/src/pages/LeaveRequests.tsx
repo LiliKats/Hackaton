@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import VacationRequestForm from '@/components/VacationRequestForm';
 import RequestStatusCard from '@/components/RequestStatusCard';
+import EditLeaveRequestModal from '@/components/EditLeaveRequestModal';
+import ViewLeaveRequestModal from '@/components/ViewLeaveRequestModal';
 import { LeaveStatus, LeaveType, LeaveRequest } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { leaveRequestsService } from '@/services/leave-requests.service';
@@ -11,6 +13,8 @@ const LeaveRequests: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCancelled, setShowCancelled] = useState(true);
+  const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
+  const [viewingRequest, setViewingRequest] = useState<LeaveRequest | null>(null);
   const { user, refreshAdminLogin } = useAuth();
 
   // Fetch leave requests on component mount
@@ -104,8 +108,10 @@ const LeaveRequests: React.FC = () => {
 
   const handleEditRequest = (id: string) => {
     console.log('Edit request:', id);
-    // TODO: Implement edit functionality
-    alert(`Edit request ${id} - Feature coming soon!`);
+    const request = requests.find(r => r.id === id);
+    if (request) {
+      setEditingRequest(request);
+    }
   };
 
   const handleCancelRequest = async (id: string) => {
@@ -128,8 +134,45 @@ const LeaveRequests: React.FC = () => {
 
   const handleViewRequest = (id: string) => {
     console.log('View request:', id);
-    // TODO: Implement view details
-    alert(`View details for request ${id} - Feature coming soon!`);
+    const request = requests.find(r => r.id === id);
+    if (request) {
+      setViewingRequest(request);
+    }
+  };
+
+  const handleUpdateRequest = async (id: string, formData: any) => {
+    console.log('Update request:', id, formData);
+
+    try {
+      setIsSubmitting(true);
+
+      await leaveRequestsService.update(id, formData);
+
+      alert('Request updated successfully!');
+      setEditingRequest(null);
+
+      // Refresh the requests list
+      await fetchRequests();
+    } catch (error) {
+      console.error('Error updating request:', error);
+      alert('Failed to update request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelFromModal = async (id: string) => {
+    try {
+      await leaveRequestsService.cancel(id);
+      alert('Request cancelled successfully!');
+      setViewingRequest(null);
+
+      // Refresh the requests list
+      await fetchRequests();
+    } catch (error) {
+      console.error('Error cancelling request:', error);
+      alert('Failed to cancel request. Please try again.');
+    }
   };
 
   return (
@@ -227,6 +270,29 @@ const LeaveRequests: React.FC = () => {
         <VacationRequestForm
           onClose={handleCloseForm}
           onSubmit={handleSubmitRequest}
+        />
+      )}
+
+      {/* Edit Leave Request Modal */}
+      {editingRequest && (
+        <EditLeaveRequestModal
+          request={editingRequest}
+          onClose={() => setEditingRequest(null)}
+          onSubmit={handleUpdateRequest}
+          isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* View Leave Request Modal */}
+      {viewingRequest && (
+        <ViewLeaveRequestModal
+          request={viewingRequest}
+          onClose={() => setViewingRequest(null)}
+          onEdit={() => {
+            setViewingRequest(null);
+            setEditingRequest(viewingRequest);
+          }}
+          onCancel={() => handleCancelFromModal(viewingRequest.id)}
         />
       )}
     </div>
