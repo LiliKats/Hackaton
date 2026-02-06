@@ -569,17 +569,19 @@ const Approvals: React.FC = () => {
             </div>
           </div>
 
-        {/* Request Counter */}
-        <div className={`mb-4 text-sm ${
-          statusFilter === 'all' ? 'text-blue-700' :
-          statusFilter === 'pending' ? 'text-orange-700' :
-          statusFilter === 'approved' ? 'text-green-700' :
-          statusFilter === 'rejected' ? 'text-red-700' :
-          statusFilter === 'cancelled' ? 'text-gray-700' :
-          'text-gray-600'
-        }`}>
-          Showing {filteredApprovals.length} requests
-        </div>
+        {/* Request Counter - Only show if there are requests */}
+        {filteredApprovals.length > 0 && (
+          <div className={`mb-4 text-sm ${
+            statusFilter === 'all' ? 'text-blue-700' :
+            statusFilter === 'pending' ? 'text-orange-700' :
+            statusFilter === 'approved' ? 'text-green-700' :
+            statusFilter === 'rejected' ? 'text-red-700' :
+            statusFilter === 'cancelled' ? 'text-gray-700' :
+            'text-gray-600'
+          }`}>
+            Showing {filteredApprovals.length} requests
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
