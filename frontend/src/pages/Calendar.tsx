@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 // import { LeaveType } from '@/types';
 import api from '@/services/api';
+import { exportCalendarAsICS, exportCalendarAsCSV } from '@/utils/calendarExport';
 
 interface Employee {
   id: string;
@@ -47,6 +48,9 @@ const Calendar: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backendLeaveData, setBackendLeaveData] = useState<BackendLeaveData[]>([]);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Derive team members from leave data
   const teamMembers: Employee[] = useMemo(() => {
@@ -107,12 +111,14 @@ const Calendar: React.FC = () => {
       setLoading(true);
       try {
         const response = await api.get<BackendLeaveData[]>('/leave-requests/all');
+        setBackendLeaveData(response.data); // Store original backend data for export
         const calendarEntries = convertBackendDataToCalendarEntries(response.data);
         setLeaveEntries(calendarEntries);
         console.log('📅 Loaded leave data for calendar:', response.data.length, 'leave requests,', calendarEntries.length, 'calendar entries');
       } catch (error) {
         console.error('Error fetching leave data for calendar:', error);
         setLeaveEntries([]);
+        setBackendLeaveData([]);
       } finally {
         setLoading(false);
       }
@@ -123,6 +129,20 @@ const Calendar: React.FC = () => {
     // Refresh every 30 seconds to show new approvals
     const interval = setInterval(fetchLeaveData, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const getDaysInMonth = (date: Date) => {
@@ -200,6 +220,24 @@ const Calendar: React.FC = () => {
     return date.toDateString() === today.toDateString();
   };
 
+  // Export handlers
+  const handleExport = (format: 'ics' | 'csv') => {
+    if (backendLeaveData.length === 0) {
+      alert('No leave data available to export');
+      return;
+    }
+
+    const teamName = user?.department || 'Team';
+
+    if (format === 'ics') {
+      exportCalendarAsICS(backendLeaveData, teamName);
+    } else {
+      exportCalendarAsCSV(backendLeaveData, teamName);
+    }
+
+    setShowExportDropdown(false);
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -209,14 +247,70 @@ const Calendar: React.FC = () => {
             <p className="text-gray-600">
               View team leave schedule and plan your time off
               {loading && <span className="ml-2 text-indigo-600">Loading...</span>}
+              {!loading && <span className="ml-2 text-gray-500">({backendLeaveData.length} leave requests)</span>}
             </p>
           </div>
 
-          {/* Month Navigation */}
-          <div className="flex items-center space-x-4">
+          {/* Export Actions */}
+          <div className="flex items-center space-x-3">
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                disabled={loading || backendLeaveData.length === 0}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                title="Export team calendar data"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Export</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showExportDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleExport('ics')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <div className="text-left">
+                        <div className="font-medium">Calendar (ICS)</div>
+                        <div className="text-xs text-gray-500">Import to Google Calendar, Outlook</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleExport('csv')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <div className="text-left">
+                        <div className="font-medium">Spreadsheet (CSV)</div>
+                        <div className="text-xs text-gray-500">Open in Excel, Google Sheets</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Month Navigation */}
+        <div className="flex justify-center mt-4">
+          <div className="flex items-center space-x-4 bg-white border border-gray-300 rounded-lg p-2">
             <button
               onClick={() => handleMonthChange('prev')}
               className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+              title="Previous Month"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -227,7 +321,7 @@ const Calendar: React.FC = () => {
               <select
                 value={`${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
                 onChange={handleMonthSelect}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="block w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-center font-medium"
               >
                 {Array.from({ length: 24 }, (_, i) => {
                   const date = new Date();
@@ -244,6 +338,7 @@ const Calendar: React.FC = () => {
             <button
               onClick={() => handleMonthChange('next')}
               className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+              title="Next Month"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
