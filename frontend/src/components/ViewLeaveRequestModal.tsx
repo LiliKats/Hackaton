@@ -83,17 +83,31 @@ const ViewLeaveRequestModal: React.FC<ViewLeaveRequestModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Leave Request Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto transform transition-all">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-gray-900">Leave Request Details</h2>
+              <p className="text-sm text-gray-500">View complete request information</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-6">
@@ -110,18 +124,23 @@ const ViewLeaveRequestModal: React.FC<ViewLeaveRequestModalProps> = ({
           </div>
 
           {/* Duration */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Duration</h4>
-            <div className="space-y-2">
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                <span className="text-lg">📅</span>
+              </div>
+              <h4 className="text-sm font-medium text-gray-900">Duration</h4>
+            </div>
+            <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Start Date:</span>
-                <span className="text-sm font-medium">{formatDate(request.startDate)}</span>
+                <span className="text-sm font-medium text-gray-900">{formatDate(request.startDate)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">End Date:</span>
-                <span className="text-sm font-medium">{formatDate(request.endDate)}</span>
+                <span className="text-sm font-medium text-gray-900">{formatDate(request.endDate)}</span>
               </div>
-              <div className="flex justify-between border-t pt-2">
+              <div className="flex justify-between border-t border-indigo-200 pt-3">
                 <span className="text-sm text-gray-600">Total Days:</span>
                 <span className="text-sm font-bold text-indigo-600">{request.totalDays} day{request.totalDays !== 1 ? 's' : ''}</span>
               </div>
@@ -130,9 +149,12 @@ const ViewLeaveRequestModal: React.FC<ViewLeaveRequestModalProps> = ({
 
           {/* Reason */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Reason</h4>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm text-gray-700">{request.reason || 'No reason provided'}</p>
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="text-lg">✍️</span>
+              <h4 className="text-sm font-medium text-gray-900">Reason</h4>
+            </div>
+            <div className="bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-sm text-gray-700 leading-relaxed">{request.reason || 'No reason provided'}</p>
             </div>
           </div>
 
@@ -169,25 +191,25 @@ const ViewLeaveRequestModal: React.FC<ViewLeaveRequestModalProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end space-x-3">
           {canEdit && onEdit && (
             <button
               onClick={onEdit}
-              className="px-4 py-2 text-blue-600 border border-blue-300 rounded-md hover:bg-blue-50 transition-colors flex items-center space-x-2"
+              className="px-6 py-3 text-blue-700 bg-blue-50 border border-blue-300 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium flex items-center space-x-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-              <span>Edit</span>
+              <span>Edit Request</span>
             </button>
           )}
 
           {canCancel && onCancel && (
             <button
               onClick={onCancel}
-              className="px-4 py-2 text-red-600 border border-red-300 rounded-md hover:bg-red-50 transition-colors flex items-center space-x-2"
+              className="px-6 py-3 text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 font-medium flex items-center space-x-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
               <span>Cancel Request</span>
@@ -196,7 +218,7 @@ const ViewLeaveRequestModal: React.FC<ViewLeaveRequestModalProps> = ({
 
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 font-medium"
           >
             Close
           </button>
