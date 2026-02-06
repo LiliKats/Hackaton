@@ -6,15 +6,59 @@ import { approvalsService, type PendingApproval, type LeaveRequestWithUser } fro
 
 // Using PendingApproval interface from approvals.service.ts
 
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  position: string;
+  department: string;
+  isActive: boolean;
+}
+
+// Helper functions for date filtering
+const getCurrentMonthRange = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { start, end };
+};
+
+const getPreviousMonthRange = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const end = new Date(now.getFullYear(), now.getMonth(), 0);
+  return { start, end };
+};
+
+const getNextMonthRange = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  return { start, end };
+};
+
+const isDateInRange = (dateStr: string, start: Date, end: Date) => {
+  const date = new Date(dateStr);
+  return date >= start && date <= end;
+};
+
 const Approvals: React.FC = () => {
   const { user } = useAuth();
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [allLeaveRequests, setAllLeaveRequests] = useState<LeaveRequestWithUser[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [bulkApproving, setBulkApproving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('pending');
+  const [selectedUser, setSelectedUser] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
+  const [dateFilter, setDateFilter] = useState<'all' | 'current' | 'previous' | 'next' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   // Sample data - current month February 2026 (not used since we're using real backend API)
   /*
@@ -90,10 +134,18 @@ const Approvals: React.FC = () => {
         // Fetch all leave requests for filtering view
         const allRequests = await approvalsService.getAllLeaveRequests();
         setAllLeaveRequests(allRequests);
+
+        // Fetch all users for user selection dropdown
+        const usersResponse = await fetch('http://localhost:3001/api/users');
+        if (usersResponse.ok) {
+          const allUsers = await usersResponse.json();
+          setUsers(allUsers.filter((user: User) => user.isActive));
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         setPendingApprovals([]);
         setAllLeaveRequests([]);
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -296,7 +348,7 @@ const Approvals: React.FC = () => {
     metadata: { status: req.status, managerNotes: req.managerNotes }
   }));
 
-  // Filter data based on status
+  // Filter data based on status first
   let displayData;
   if (statusFilter === 'all') {
     displayData = transformedLeaveRequests;
@@ -306,6 +358,77 @@ const Approvals: React.FC = () => {
   } else {
     // Filter by specific status
     displayData = transformedLeaveRequests.filter(req => req.metadata.status === statusFilter);
+  }
+
+  // Get unique requestors from current filtered data
+  const availableRequestors = Array.from(new Set(
+    displayData.map(req => {
+      if (statusFilter === 'pending') {
+        // For pending requests, find user by email
+        const user = users.find(u => u.email === req.requestorEmail);
+        return user ? user.id : null;
+      } else {
+        // For other requests, find user by name
+        const user = users.find(u => req.requestorName === `${u.firstName} ${u.lastName}`);
+        return user ? user.id : null;
+      }
+    })
+  )).filter(Boolean) as string[];
+
+  // Filter data based on selected user
+  if (selectedUser !== 'all') {
+    displayData = displayData.filter(req => {
+      // For pending approvals, check requestorEmail
+      if (statusFilter === 'pending') {
+        const user = users.find(u => u.id === selectedUser);
+        return user && req.requestorEmail === user.email;
+      }
+      // For transformed leave requests, check the user ID from firstName/lastName combination
+      else {
+        const user = users.find(u => u.id === selectedUser);
+        return user && req.requestorName === `${user.firstName} ${user.lastName}`;
+      }
+    });
+  }
+
+  // Filter data based on date period
+  if (dateFilter !== 'all') {
+    displayData = displayData.filter(req => {
+      let dateRange;
+
+      switch (dateFilter) {
+        case 'current':
+          dateRange = getCurrentMonthRange();
+          break;
+        case 'previous':
+          dateRange = getPreviousMonthRange();
+          break;
+        case 'next':
+          dateRange = getNextMonthRange();
+          break;
+        case 'custom':
+          if (customStartDate && customEndDate) {
+            dateRange = {
+              start: new Date(customStartDate),
+              end: new Date(customEndDate)
+            };
+          } else {
+            return true; // Show all if custom dates not set
+          }
+          break;
+        default:
+          return true;
+      }
+
+      // Check if request falls within the date range
+      // Check both start date and end date of the request
+      const requestStartInRange = isDateInRange(req.startDate, dateRange.start, dateRange.end);
+      const requestEndInRange = isDateInRange(req.endDate, dateRange.start, dateRange.end);
+      // Include request if it starts, ends, or overlaps with the selected period
+      const requestOverlaps = new Date(req.startDate) <= dateRange.end && new Date(req.endDate) >= dateRange.start;
+
+      return requestStartInRange || requestEndInRange || requestOverlaps;
+    });
   }
 
   const sortedApprovals = [...displayData].sort((a, b) => {
@@ -339,16 +462,41 @@ const Approvals: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leave Requests</h1>
-            <p className="text-gray-600">View and manage all leave requests</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-              {filteredApprovals.length} requests
-            </span>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Leave Requests</h1>
+          <p className="text-gray-600">View and manage all leave requests</p>
+        </div>
+      </div>
+
+      {/* View Mode Toggle */}
+      <div className="mb-6">
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setViewMode('table')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center space-x-2 ${
+              viewMode === 'table'
+                ? 'bg-white text-gray-900 shadow'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            <span>Table View</span>
+          </button>
+          <button
+            onClick={() => setViewMode('details')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center space-x-2 ${
+              viewMode === 'details'
+                ? 'bg-white text-gray-900 shadow'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <span>Details View</span>
+          </button>
         </div>
       </div>
 
@@ -415,7 +563,50 @@ const Approvals: React.FC = () => {
             </div>
           </div>
 
+        {/* Request Counter */}
+        <div className={`mb-4 text-sm ${
+          statusFilter === 'all' ? 'text-blue-700' :
+          statusFilter === 'pending' ? 'text-orange-700' :
+          statusFilter === 'approved' ? 'text-green-700' :
+          statusFilter === 'rejected' ? 'text-red-700' :
+          statusFilter === 'cancelled' ? 'text-gray-700' :
+          'text-gray-600'
+        }`}>
+          Showing {filteredApprovals.length} requests
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Requestor</label>
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">All Requestors</option>
+              {users
+                .filter(user => availableRequestors.includes(user.id))
+                .map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName} ({user.department})
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Period</label>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as any)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">All Periods</option>
+              <option value="current">Current Month</option>
+              <option value="previous">Previous Month</option>
+              <option value="next">Next Month</option>
+              <option value="custom">Custom Period</option>
+            </select>
+          </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
             <select
@@ -428,6 +619,30 @@ const Approvals: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Custom Date Range */}
+        {dateFilter === 'custom' && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bulk Actions - Only for pending approvals */}
@@ -513,7 +728,126 @@ const Approvals: React.FC = () => {
             }
           </p>
         </div>
+      ) : viewMode === 'table' ? (
+        /* Table View */
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  {statusFilter === 'pending' && (
+                    <th className="px-6 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedRequests.size === filteredApprovals.length && filteredApprovals.length > 0}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                      />
+                    </th>
+                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Requestor
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Dates
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Days
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  {statusFilter === 'pending' && (
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sortedApprovals.map((approval) => (
+                  <tr key={approval.stepId} className="hover:bg-gray-50">
+                    {statusFilter === 'pending' && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedRequests.has(approval.stepId)}
+                          onChange={(e) => handleSelectionChange(approval.stepId, e.target.checked)}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                      </td>
+                    )}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{approval.requestorName}</div>
+                        <div className="text-sm text-gray-500">{approval.requestorEmail}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900 capitalize">{approval.leaveType}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(approval.startDate).toLocaleDateString()} - {new Date(approval.endDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {approval.totalDays}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        approval.currentStep === 'approved'
+                          ? 'bg-green-100 text-green-800'
+                          : approval.currentStep === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : approval.currentStep === 'cancelled'
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {approval.currentStep.toUpperCase()}
+                      </span>
+                    </td>
+                    {statusFilter === 'pending' && approval.currentStep !== 'approved' && approval.currentStep !== 'rejected' && approval.currentStep !== 'cancelled' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => {
+                              const comment = prompt('Enter approval comment:');
+                              if (comment) handleApprove(approval.stepId, comment);
+                            }}
+                            disabled={loading || bulkApproving}
+                            className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                            title="Approve"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => {
+                              const comment = prompt('Enter rejection reason:');
+                              if (comment) handleReject(approval.stepId, comment);
+                            }}
+                            disabled={loading || bulkApproving}
+                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                            title="Reject"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
+        /* Details View */
         <div className="space-y-6">
           {sortedApprovals.map((approval) => (
             <ApprovalRequestCard
