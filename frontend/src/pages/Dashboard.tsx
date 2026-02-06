@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import VacationRequestForm from '@/components/VacationRequestForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { leaveRequestsService } from '@/services/leave-requests.service';
@@ -10,7 +10,7 @@ const Dashboard: React.FC = () => {
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, refreshAdminLogin } = useAuth();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleQuickRequest = () => {
     setShowRequestForm(true);
@@ -102,7 +102,10 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <button
+          onClick={() => navigate('/approvals?filter=pending')}
+          className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200 w-full text-left hover:bg-gray-50"
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -118,9 +121,14 @@ const Dashboard: React.FC = () => {
                   <dd className="text-lg font-medium text-gray-900">3</dd>
                 </dl>
               </div>
+              <div className="ml-2">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        </button>
 
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
