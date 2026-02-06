@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
 import VacationRequestForm from '@/components/VacationRequestForm';
+import { useAuth } from '@/contexts/AuthContext';
+import { leaveRequestsService } from '@/services/leave-requests.service';
+import { LeaveType } from '@/types';
 
 const Dashboard: React.FC = () => {
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, refreshAdminLogin } = useAuth();
   // const navigate = useNavigate();
 
   const handleQuickRequest = () => {
@@ -14,16 +19,55 @@ const Dashboard: React.FC = () => {
     setShowRequestForm(false);
   };
 
-  const handleSubmitRequest = (formData: any) => {
+  const handleSubmitRequest = async (formData: any) => {
     console.log('Request submitted from dashboard:', formData);
 
-    if (formData.action === 'plan') {
-      alert('Request saved as draft!');
-    } else {
-      alert('Request submitted for approval!');
+    if (!user) {
+      alert('You must be logged in to submit a request');
+      return;
     }
 
-    setShowRequestForm(false);
+    if (formData.action === 'plan') {
+      // For now, just show alert for "plan" mode since it's a draft
+      alert('Request saved as draft!');
+      setShowRequestForm(false);
+      return;
+    }
+
+    // Handle actual submission for 'request' action
+    try {
+      setIsSubmitting(true);
+
+      // Calculate total days
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      const timeDiff = endDate.getTime() - startDate.getTime();
+      const totalDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+
+      // Prepare data for API call
+      const requestData = {
+        userId: user.id,
+        type: formData.type as LeaveType,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        totalDays: totalDays,
+        reason: formData.reason,
+        priority: 'medium' // Default priority
+      };
+
+      console.log('Submitting to API:', requestData);
+
+      const response = await leaveRequestsService.create(requestData);
+      console.log('API Response:', response);
+
+      alert('Request submitted for approval successfully!');
+      setShowRequestForm(false);
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      alert('Failed to submit request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -33,15 +77,31 @@ const Dashboard: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Welcome to LeaveBoard - your vacation tracking hub</p>
         </div>
-        <button
-          onClick={handleQuickRequest}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span>Quick Request</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={handleQuickRequest}
+            disabled={isSubmitting}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>{isSubmitting ? 'Submitting...' : 'New Request'}</span>
+          </button>
+
+          {/* Temporary fix button for user ID issue */}
+          {user?.id === 'dev-admin-001' && (
+            <button
+              onClick={refreshAdminLogin}
+              className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Fix User ID</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

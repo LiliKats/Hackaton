@@ -8,6 +8,7 @@ interface AuthContextType {
   register: (userData: any) => Promise<void>;
   logout: () => void;
   loginAsAdmin: () => void;
+  refreshAdminLogin: () => void;
   isAuthenticated: boolean;
   loading: boolean;
 }
@@ -16,10 +17,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Development admin user - DO NOT USE IN PRODUCTION
 const DEV_ADMIN_USER: User = {
-  id: 'dev-admin-001',
+  id: 'admin-001',
   email: 'admin@dev.local',
   firstName: 'Admin',
-  lastName: 'Developer',
+  lastName: 'User',
   role: UserRole.ADMIN,
   position: 'System Administrator',
   department: 'IT',
@@ -71,6 +72,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Admin bypass only available in development mode!');
       return;
     }
+
+    // Force clear old data first
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+
     localStorage.setItem('access_token', 'dev-admin-token');
     localStorage.setItem('user', JSON.stringify(DEV_ADMIN_USER));
     setUser(DEV_ADMIN_USER);
@@ -96,6 +102,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const refreshAdminLogin = () => {
+    // Force clear old cached data and re-login with correct admin user
+    if (!import.meta.env.DEV) {
+      console.error('Admin refresh only available in development mode!');
+      return;
+    }
+
+    console.log('🔄 Refreshing admin login with correct user ID...');
+
+    // Clear all cached data
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    setUser(null);
+
+    // Re-login with correct admin user
+    setTimeout(() => {
+      localStorage.setItem('access_token', 'dev-admin-token');
+      localStorage.setItem('user', JSON.stringify(DEV_ADMIN_USER));
+      setUser(DEV_ADMIN_USER);
+      console.warn('✅ Admin login refreshed with user ID:', DEV_ADMIN_USER.id);
+    }, 100);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -103,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       register,
       logout,
       loginAsAdmin,
+      refreshAdminLogin,
       isAuthenticated: !!user,
       loading
     }}>
