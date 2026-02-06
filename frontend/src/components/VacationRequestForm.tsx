@@ -269,7 +269,7 @@ const VacationRequestForm: React.FC<VacationRequestFormProps> = ({ onClose, onSu
             onClick={onClose}
             className="flex-1 sm:flex-none px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 font-medium"
           >
-            Cancel
+            Close
           </button>
 
           <div className="flex flex-1 gap-3">
